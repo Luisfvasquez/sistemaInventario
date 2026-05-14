@@ -107,8 +107,8 @@
                 <table class="w-full text-left">
                     <thead class="bg-gray-50 text-gray-600 text-sm uppercase">
                         <tr>
+                            <th class="px-6 py-4 font-semibold">Identificacion</th>
                             <th class="px-6 py-4 font-semibold">Nombre</th>
-                            <th class="px-6 py-4 font-semibold">Email</th>
                             <th class="px-6 py-4 font-semibold">Email</th>
                             <th class="px-6 py-4 font-semibold">Estado</th>
                             <th class="px-6 py-4 font-semibold text-right">Acciones</th>
@@ -118,6 +118,7 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach ($admins as $item)
                             <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4">{{ $item->dni ?? 'No disponible' }}</td>
                                 <td class="px-6 py-4">{{ $item->name }}</td>
                                 <td class="px-6 py-4 text-gray-500">{{ $item->email }}</td>
                                 <td class="px-6 py-4"><span

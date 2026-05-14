@@ -34,7 +34,6 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
         ]);
 
-
         try {
             Category::create([
                 'name' => $request->name,
@@ -42,7 +41,7 @@ class CategoryController extends Controller
                 'description' => $request->description,
             ]);
         } catch (\Exception $e) {
-            return redirect()->route('admin.index')->with('error', 'Error creating category: ' . $e->getMessage());
+            return redirect()->route('admin.index')->with('error', 'Error creating category: '.$e->getMessage());
         }
 
         return redirect()->route('admin.index')->with('success', 'Categoría creada exitosamente.');
@@ -71,7 +70,7 @@ class CategoryController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:categories,slug,' . $id,
+            'slug' => 'required|string|max:255|unique:categories,slug,'.$id,
             'description' => 'nullable|string',
         ]);
 
@@ -90,6 +89,9 @@ class CategoryController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $category = Category::findOrFail($id);
+        $category->delete();
+
+        return redirect()->route('admin.index')->with('success', 'Categoría eliminada exitosamente.');
     }
 }

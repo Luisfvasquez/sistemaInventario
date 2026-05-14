@@ -48,7 +48,7 @@ class SupplierController extends Controller
 
             return redirect()->route('admin.index')->with('success', 'Proveedor creado exitosamente.');
         } catch (\Exception $e) {
-            return redirect()->route('admin.index')->with('error', 'Error creating supplier: ' . $e->getMessage());
+            return redirect()->route('admin.index')->with('error', 'Error creating supplier: '.$e->getMessage());
         }
     }
 
@@ -75,7 +75,7 @@ class SupplierController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:suppliers,email,' . $id,
+            'email' => 'required|email|unique:suppliers,email,'.$id,
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
         ]);
@@ -100,6 +100,9 @@ class SupplierController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $supplier = Supplier::findOrFail($id);
+        $supplier->delete();
+
+        return redirect()->route('admin.index')->with('success', 'Proveedor eliminado exitosamente.');
     }
 }

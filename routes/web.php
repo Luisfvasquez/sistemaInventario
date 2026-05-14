@@ -19,15 +19,14 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
         Route::get('/index', [AdminController::class, 'index'])->name('admin.index');
-        Route::resource('products', ProductController::class)->names('products');
-        Route::resource('clients', ClientController::class)->names('clients');
-        Route::resource('admins', AdminController::class)->names('admins');
-        Route::resource('categories', CategoryController::class)->names('categories');
-        Route::resource('suppliers', SupplierController::class)->names('suppliers');
-        Route::resource('inventories', InventoryController::class)->names('inventories');
-        Route::resource('purchases', InventoryController::class)->names('purchases');
-        Route::resource('orders', InventoryController::class)->names('orders');
-
+        Route::resource('products', ProductController::class)->names('admin.products');
+        Route::resource('clients', ClientController::class)->names('admin.clients');
+        Route::resource('admins', AdminController::class)->names('admin.admins');
+        Route::resource('categories', CategoryController::class)->names('admin.categories');
+        Route::resource('suppliers', SupplierController::class)->names('admin.suppliers');
+        Route::resource('inventories', InventoryController::class)->names('admin.inventories');
+        Route::resource('purchases', InventoryController::class)->names('admin.purchases');
+        Route::resource('orders', InventoryController::class)->names('admin.orders');
     });
 
 Route::middleware('auth')->group(function () {

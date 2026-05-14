@@ -22,33 +22,33 @@
             Dashboard
         </a>
 
-        <a href="{{ route('products.index') }}"
-            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('products.index') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+        <a href="{{ route('admin.products.index') }}"
+            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('admin.products.*') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
             Productos
         </a>
 
-        <a href="{{ route('inventories.index') }}"
-            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('inventories.index') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+        <a href="{{ route('admin.inventories.index') }}"
+            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('admin.inventories.*') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
             Inventario
         </a>
 
-        <a href="{{ route('purchases.index') }}"
-            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('purchases.index') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+        <a href="{{ route('admin.purchases.index') }}"
+            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('admin.purchases.*') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
             Compras
         </a>
 
-        <a href="{{ route('orders.index') }}"
-            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('orders.index') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+        <a href="{{ route('admin.orders.index') }}"
+            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('admin.orders.*') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
             Pedidos
         </a>
 
-        <a href="{{ route('clients.index') }}"
-            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('clients.index') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+        <a href="{{ route('admin.clients.index') }}"
+            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('admin.clients.*') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
             Clientes
         </a>
 
         <a href="{{ route('admin.index') }}"
-            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('admin.*') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+            class="block px-4 py-2 rounded transition-colors {{ request()->routeIs('admin.index') ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
             Administración
         </a>
 

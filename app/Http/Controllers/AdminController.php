@@ -54,7 +54,20 @@ class AdminController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'dni' => 'nullable|string|max:255|unique:users,dni',
+            'last_name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'is_active' => 'required|boolean',
+        ]);
+
+        $user = User::create($request->all());
+
+        return redirect()->route('admin.index')->with('success', 'Admin creado exitosamente');
     }
 
     /**
@@ -78,7 +91,21 @@ class AdminController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'dni' => 'nullable|string|max:255|unique:users,dni,'.$id,
+            'last_name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,'.$id,
+            'password' => 'nullable|string|min:8',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'is_active' => 'required|boolean',
+        ]);
+
+        $user = User::findOrFail($id);
+        $user->update($request->all());
+
+        return redirect()->route('admin.index')->with('success', 'Admin actualizado exitosamente');
     }
 
     /**
@@ -86,6 +113,9 @@ class AdminController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $user = User::findOrFail($id);
+        $user->delete();
+
+        return redirect()->route('admin.index')->with('success', 'Admin eliminado exitosamente');
     }
 }

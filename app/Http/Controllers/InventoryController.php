@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Inventory;
 use Illuminate\Http\Request;
 
 class InventoryController extends Controller
@@ -11,7 +12,10 @@ class InventoryController extends Controller
      */
     public function index()
     {
-        //
+        // Eager loading de 'product' y 'product.category' para rendimiento
+        $inventories = Inventory::with(['product.category'])->get();
+
+        return view('admin.inventories.index', compact('inventories'));
     }
 
     /**
@@ -49,9 +53,28 @@ class InventoryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Inventory $inventory)
     {
-        //
+        $request->validate([
+            'adjustment_type' => 'required|in:addition,subtraction',
+            'quantity' => 'required|numeric|min:0.01',
+            'reason' => 'required|string|max:255',
+        ]);
+
+        $quantity = $request->quantity;
+
+        // Si es resta, convertimos el número a negativo para la suma algebraica
+        if ($request->adjustment_type === 'subtraction') {
+            $quantity = -$quantity;
+        }
+
+        // Actualizamos el stock
+        $inventory->increment('stock', $quantity);
+
+        // TODO: Registrar en la tabla inventory_movements el motivo ($request->reason)
+        // El paquete de auditoría que configuramos registrará quién hizo este cambio.
+
+        return back()->with('success', 'Stock ajustado correctamente.');
     }
 
     /**
