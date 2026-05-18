@@ -238,7 +238,9 @@
                             <th class="px-6 py-4 font-semibold">RIF</th>
                             <th class="px-6 py-4 font-semibold">Razón Social</th>
                             <th class="px-6 py-4 font-semibold">Persona de Contacto</th>
+                            <th class="px-6 py-4 font-semibold">Correo Electrónico</th>
                             <th class="px-6 py-4 font-semibold">Teléfono</th>
+                            <th class="px-6 py-4 font-semibold">Dirección</th>
                             <th class="px-6 py-4 font-semibold text-right">Acciones</th>
                         </tr>
                     </thead>
@@ -247,9 +249,11 @@
                         @foreach ($suppliers as $item)
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4">{{ $item->rif }}</td>
-                                <td class="px-6 py-4">{{ $item->name }}</td> {{-- Corregido --}}
-                                <td class="px-6 py-4">{{ $item->contact_person }}</td> {{-- Corregido --}}
-                                <td class="px-6 py-4">{{ $item->phone_number }}</td> {{-- Corregido --}}
+                                <td class="px-6 py-4">{{ $item->name }}</td>
+                                <td class="px-6 py-4">{{ $item->contact_person }}</td>
+                                <td class="px-6 py-4">{{ $item->email }}</td>
+                                <td class="px-6 py-4">{{ $item->phone_number }}</td>
+                                <td class="px-6 py-4">{{ $item->address }}</td>
                                 <td class="px-6 py-4 text-right">
                                     <button type="button" @click="openEdit('suppliers', @js($item))"
                                         class="text-blue-600 hover:text-blue-800 mr-2">Editar</button>

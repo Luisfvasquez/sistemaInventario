@@ -25,6 +25,7 @@ class Product extends Model implements Auditable
         'cost',
         'price',
         'track_inventory',
+        'exchange_rate',
         'allow_negative_stock',
         'has_variants',
         'status',
@@ -36,6 +37,24 @@ class Product extends Model implements Auditable
         'allow_negative_stock' => 'boolean',
         'has_variants' => 'boolean',
     ];
+
+    public function getTotalUsdAttribute()
+    {
+        if ($this->exchange_rate && $this->exchange_rate > 0) {
+            return round($this->total / $this->exchange_rate, 2);
+        }
+
+        return 0;
+    }
+
+    public function getSubtotalUsdAttribute()
+    {
+        if ($this->exchange_rate && $this->exchange_rate > 0) {
+            return round($this->subtotal / $this->exchange_rate, 2);
+        }
+
+        return 0;
+    }
 
     public function category()
     {

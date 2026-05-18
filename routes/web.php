@@ -20,9 +20,13 @@ Route::middleware(['auth', 'role:admin'])
 
         Route::get('/index', [AdminController::class, 'index'])->name('admin.index');
         Route::resource('products', ProductController::class)->names('admin.products');
+        Route::delete('products/{id}/image', [ProductController::class, 'destroyImage'])->name('admin.products.destroyImage');
+        Route::get('forzar-actualizacion-dolar', [ProductController::class, 'forzarActualizacionDolar'])->name('admin.products.forzarActualizacionDolar');
         Route::resource('clients', ClientController::class)->names('admin.clients');
         Route::resource('admins', AdminController::class)->names('admin.admins');
         Route::resource('categories', CategoryController::class)->names('admin.categories');
+        Route::post('categories/quick-store', [CategoryController::class, 'quickStore'])
+            ->name('admin.categories.quickStore');
         Route::resource('suppliers', SupplierController::class)->names('admin.suppliers');
         Route::resource('inventories', InventoryController::class)->names('admin.inventories');
         Route::resource('purchases', InventoryController::class)->names('admin.purchases');

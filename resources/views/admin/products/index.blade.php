@@ -17,13 +17,31 @@
                 Nuevo Producto
             </a>
         </div>
-
+        @if ($errors->any())
+            <div class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm">
+                <div class="flex items-center mb-2">
+                    <svg class="w-6 h-6 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-red-800 font-bold text-lg">¡No se pudo guardar el producto!</h3>
+                </div>
+                <ul class="list-disc list-inside text-red-600 text-sm ml-8 space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         {{-- Tabla de Productos --}}
         <div class="bg-white rounded-xl shadow overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Imágenes</th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Producto / SKU</th>
@@ -48,6 +66,27 @@
                         @forelse($products as $product)
                             {{-- Fila controlada por Alpine para manejar sus propios modales --}}
                             <tr x-data="{ openEdit: false, openDelete: false }" class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        @if ($product->images->count() > 0)
+                                            @php
+                                                // Obtenemos la primera imagen del producto
+                                                $firstImage = $product->images->first();
+                                            @endphp
+                                            <img src="{{ asset('storage/' . $firstImage->path) }}"
+                                                alt="{{ $product->name }}" class="w-10 h-10 object-cover rounded-md">
+                                        @else
+                                            {{-- Placeholder si no tiene imagen --}}
+                                            <div class="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center">
+                                                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div>
@@ -115,15 +154,19 @@
                                                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                                                 class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
 
+                                                {{-- ATENCIÓN AL ENCTYPE PARA LAS IMÁGENES --}}
                                                 <form action="{{ route('admin.products.update', $product->id) }}"
-                                                    method="POST">
+                                                    method="POST" enctype="multipart/form-data">
                                                     @csrf
                                                     @method('PUT')
 
-                                                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                                    {{-- Añadimos un max-height y overflow por si suben muchas fotos no se salga de la pantalla --}}
+                                                    <div
+                                                        class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 max-h-[75vh] overflow-y-auto">
                                                         <h3
                                                             class="text-lg leading-6 font-bold text-gray-900 mb-4 border-b pb-2">
-                                                            Editar Producto: {{ $product->name }}</h3>
+                                                            Editar Producto: {{ $product->name }}
+                                                        </h3>
 
                                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div>
@@ -143,23 +186,28 @@
                                                                     @foreach ($categories as $category)
                                                                         <option value="{{ $category->id }}"
                                                                             {{ $product->category_id == $category->id ? 'selected' : '' }}>
-                                                                            {{ $category->name }}</option>
+                                                                            {{ $category->name }}
+                                                                        </option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
                                                             <div>
-                                                                <label class="block text-sm font-medium text-gray-700">SKU /
+                                                                <label class="block text-sm font-medium text-gray-700">SKU
+                                                                    /
                                                                     Cód. Barras</label>
                                                                 <input type="text" name="sku_barcode"
                                                                     value="{{ $product->sku_barcode }}"
                                                                     class="mt-1 w-full rounded-lg border-gray-300 text-sm"
                                                                     required>
                                                             </div>
+
+                                                            {{-- Costo y Precio --}}
                                                             <div class="grid grid-cols-2 gap-2">
                                                                 <div>
                                                                     <label
                                                                         class="block text-sm font-medium text-gray-700">Costo
-                                                                        ($)</label>
+                                                                        ($)
+                                                                    </label>
                                                                     <input type="number" step="0.01" name="cost"
                                                                         value="{{ $product->cost }}"
                                                                         class="mt-1 w-full rounded-lg border-gray-300 text-sm"
@@ -175,6 +223,8 @@
                                                                         required>
                                                                 </div>
                                                             </div>
+
+                                                            {{-- Estado y Stock Mínimo --}}
                                                             <div>
                                                                 <label
                                                                     class="block text-sm font-medium text-gray-700">Estado</label>
@@ -189,8 +239,57 @@
                                                                         Inactivo</option>
                                                                 </select>
                                                             </div>
+                                                            <div>
+                                                                <label
+                                                                    class="block text-sm font-medium text-gray-700">Stock
+                                                                    Mínimo Alerta</label>
+                                                                <input type="number" name="minimum_stock"
+                                                                    value="{{ $product->inventory->minimum_stock ?? 0 }}"
+                                                                    class="mt-1 w-full rounded-lg border-gray-300 text-sm"
+                                                                    required>
+                                                            </div>
                                                         </div>
-                                                        {{-- Nota sobre los bultos --}}
+
+                                                        {{-- SECCIÓN DE IMÁGENES DENTRO DEL MODAL --}}
+                                                        <div class="mt-6 pt-4 border-t border-gray-200">
+                                                            <h4 class="text-md font-bold text-gray-800 mb-3">Imágenes del
+                                                                Producto</h4>
+
+                                                            {{-- Input para agregar nuevas --}}
+                                                            <div class="mb-4">
+                                                                <label
+                                                                    class="block text-sm font-medium text-gray-700">Adjuntar
+                                                                    nuevas fotos (Opcional)</label>
+                                                                <input type="file" name="images[]" multiple
+                                                                    accept="image/*"
+                                                                    class="mt-1 w-full text-sm border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-1">
+                                                            </div>
+
+                                                            {{-- Visor de las que ya existen --}}
+                                                            @if ($product->images->count() > 0)
+                                                                <label
+                                                                    class="block text-sm font-medium text-gray-700 mb-2">Imágenes
+                                                                    Actuales</label>
+                                                                <div
+                                                                    class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                                                    @foreach ($product->images as $img)
+                                                                        <div
+                                                                            class="relative group border rounded-lg overflow-hidden bg-white shadow-sm flex flex-col items-center p-2">
+                                                                            <img src="{{ asset('storage/' . dirname($img->path) . '/thumb_' . basename($img->path)) }}"
+                                                                                class="h-24 w-full object-cover rounded-md"
+                                                                                alt="Miniatura">
+
+                                                                            <button type="button"
+                                                                                onclick="if(confirm('¿Eliminar esta imagen de la base de datos?')) { document.getElementById('delete-img-{{ $img->id }}').submit(); }"
+                                                                                class="mt-2 text-xs text-red-600 hover:text-red-900 font-bold cursor-pointer">
+                                                                                Eliminar
+                                                                            </button>
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            @endif
+                                                        </div>
+
                                                         <p class="mt-4 text-xs text-gray-500 bg-gray-50 p-2 rounded">
                                                             Nota: Si necesitas editar o agregar nuevas presentaciones
                                                             (Bultos/Cajas) de este producto o ajustar el stock, hazlo desde
@@ -213,6 +312,16 @@
                                         </div>
                                     </div>
                                 </template>
+
+                                {{-- ESTOS FORMULARIOS VAN FUERA DEL <template> y del <form> principal --}}
+                                @foreach ($product->images as $img)
+                                    <form id="delete-img-{{ $img->id }}"
+                                        action="{{ route('admin.products.destroyImage', $img->id) }}" method="POST"
+                                        class="hidden">
+                                        @csrf
+                                        @method('DELETE')
+                                    </form>
+                                @endforeach
 
                                 {{-- MODAL DE ELIMINACIÓN --}}
                                 <template x-teleport="body">

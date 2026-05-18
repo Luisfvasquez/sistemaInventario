@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $user = User::create([
+            'dni' => '0000000000',
             'name' => 'Admin',
             'last_name' => 'System',
             'phone_number' => '0000000000',

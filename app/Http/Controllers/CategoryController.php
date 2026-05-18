@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
@@ -45,6 +46,27 @@ class CategoryController extends Controller
         }
 
         return redirect()->route('admin.index')->with('success', 'Categoría creada exitosamente.');
+    }
+
+    public function quickStore(Request $request)
+    {
+        // Validamos que el nombre no venga vacío y no exista ya
+        $request->validate([
+            'name' => 'required|string|max:255|unique:categories,name',
+        ]);
+
+        // Creamos la categoría
+        $category = Category::create([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name),
+            'is_active' => true,
+        ]);
+
+        // Retornamos la nueva categoría en formato JSON
+        return response()->json([
+            'success' => true,
+            'category' => $category,
+        ]);
     }
 
     /**

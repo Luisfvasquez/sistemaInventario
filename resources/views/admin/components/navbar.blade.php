@@ -15,6 +15,25 @@
 
     <div class="flex items-center gap-4">
 
+        {{-- Contenedor de Tasa BCV con Botón de Recarga --}}
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 p-2 px-3 text-yellow-700 flex items-center gap-3">
+            <p class="text-sm m-0">
+                <strong>Dólar BCV:</strong> <span class="font-bold">Bs. {{ $exchangeRate ?? 'N/D' }}</span>
+            </p>
+
+            {{-- Botón circular de actualización --}}
+            <a href="{{ route('admin.products.forzarActualizacionDolar') }}"
+                class="p-1.5 rounded-full hover:bg-yellow-200 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                title="Actualizar tasa ahora">
+                <svg class="w-4 h-4 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                    </path>
+                </svg>
+            </a>
+        </div>
+
         {{-- Dropdown de Usuario --}}
         <div class="relative" x-data="{ dropdownOpen: false }">
 

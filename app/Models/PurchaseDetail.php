@@ -32,6 +32,18 @@ class PurchaseDetail extends Model implements Auditable
         'new_cost' => 'decimal:2',
     ];
 
+    public function getUnitCostUsdAttribute()
+    {
+        // Accedemos a la tasa de cambio guardada en la compra principal
+        $rate = $this->purchase->exchange_rate;
+
+        if ($rate && $rate > 0) {
+            return round($this->unit_cost / $rate, 2);
+        }
+
+        return 0;
+    }
+
     public function purchase()
     {
         return $this->belongsTo(Purchase::class);

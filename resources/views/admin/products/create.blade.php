@@ -16,162 +16,411 @@
                 Volver al listado
             </a>
         </div>
-
-        <form action="{{ route('admin.products.store') }}" method="POST" class="space-y-6">
+        @if ($errors->any())
+            <div class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm">
+                <div class="flex items-center mb-2">
+                    <svg class="w-6 h-6 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-red-800 font-bold text-lg">¡No se pudo guardar el producto!</h3>
+                </div>
+                <ul class="list-disc list-inside text-red-600 text-sm ml-8 space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+        <form action="{{ route('admin.products.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6"
+            x-data="productForm()">
             @csrf
+
+            {{-- Notificación si no hay tasa de cambio --}}
+            @if (!$exchangeRate)
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                    <p class="text-red-700"><strong>¡Atención!</strong> No hay una tasa de cambio activa. Los cálculos en
+                        USD no se mostrarán correctamente.</p>
+                </div>
+            @endif
+
+            {{-- Sección: Imágenes del Producto --}}
+            <div class="bg-white p-6 rounded-xl shadow">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Imágenes del Producto</h2>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Subir Imágenes (Formatos: JPG, PNG,
+                        WEBP)</label>
+                    <input type="file" name="images[]" multiple accept="image/*"
+                        class="w-full rounded-lg border border-gray-300 p-2 focus:border-blue-500 focus:ring-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">Puedes seleccionar varias imágenes. Se optimizarán a formato WebP.
+                        La primera será la principal.</p>
+                </div>
+            </div>
 
             {{-- Sección: Información General --}}
             <div class="bg-white p-6 rounded-xl shadow">
                 <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Información General</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
-                        <input type="text" name="name" value="{{ old('name') }}" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                        @error('name')
-                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                        <select name="category_id" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">Seleccione una categoría</option>
-                            @foreach ($categories as $category)
-                                <option value="{{ $category->id }}"
-                                    {{ old('category_id') == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="flex gap-2 items-center">
+                            <select name="category_id" id="category_select" x-model="categoryId" @change="generateSku"
+                                required class="w-full rounded-lg border-gray-300 focus:border-blue-500">
+                                <option value="">Seleccione una categoría</option>
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}" data-name="{{ $category->name }}">
+                                        {{ $category->name }}</option>
+                                @endforeach
+                            </select>
+
+                            {{-- Botón para abrir modal --}}
+                            <button type="button" @click="showCategoryModal = true"
+                                class="p-2.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                title="Crear nueva categoría">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">SKU (Código Interno)</label>
-                        <input type="text" name="sku" value="{{ old('sku') }}" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
+                        <input type="text" name="name" x-model="name" @input.debounce.500ms="generateSku" required
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
-                        <input type="text" name="sku_barcode" value="{{ old('sku_barcode') }}" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">SKU (Auto-generado / Editable)</label>
+                        <input type="text" name="sku" x-model="sku" required
+                            class="w-full rounded-lg border-gray-300 bg-yellow-50 focus:border-blue-500">
                     </div>
 
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cód. Barras (Pistola escáner)</label>
+                        <input type="text" name="sku_barcode" @keydown.enter.prevent="" required
+                            class="w-full rounded-lg border-gray-300 bg-blue-50 focus:bg-white transition-colors" autofocus>
+                    </div>
+
+                    {{-- Añadidos Marca y Descripción --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Marca</label>
                         <input type="text" name="brand" value="{{ old('brand') }}"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500">
                     </div>
 
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                        <textarea name="description" rows="3"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">{{ old('description') }}</textarea>
+                        <textarea name="description" rows="3" class="w-full rounded-lg border-gray-300 focus:border-blue-500">{{ old('description') }}</textarea>
                     </div>
                 </div>
             </div>
 
-            {{-- Sección: Costos e Inventario Base --}}
+            {{-- Sección: Costos en Bs con conversión a USD --}}
             <div class="bg-white p-6 rounded-xl shadow">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Configuración de Unidad Base</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xl font-semibold text-gray-700">Configuración Base (Bs)</h2>
+                    <span class="bg-gray-800 text-white text-xs px-2 py-1 rounded">Tasa Actual: Bs. <span
+                            x-text="rate"></span></span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Costo de Compra ($)</label>
-                        <input type="number" name="cost" step="0.01" value="{{ old('cost', 0) }}" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Costo Compra (Bs)</label>
+                        <div class="relative">
+                            <input type="hidden" name="cost" :value="cost">
+                            <input type="text" x-model="costStr" @input="updateCostStr" @blur="calculatePrice" required
+                                class="w-full rounded-lg border-gray-300 pr-20">
+                            <span class="absolute right-3 top-2.5 text-gray-500 text-sm font-bold">($<span
+                                    x-text="getUsd(cost)"></span>)</span>
+                        </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio de Venta ($)</label>
-                        <input type="number" name="price" step="0.01" value="{{ old('price', 0) }}" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio Venta (Bs) <span
+                                class="text-xs text-green-600 font-bold ml-2">+30% Auto</span></label>
+                        <div class="relative">
+                            <input type="hidden" name="price" :value="price">
+                            <input type="text" x-model="priceStr" @input="updatePriceStr" required
+                                class="w-full rounded-lg border-gray-300 pr-20 border-green-300 focus:ring-green-500">
+                            <span class="absolute right-3 top-2.5 text-green-700 text-sm font-bold">($<span
+                                    x-text="getUsd(price)"></span>)</span>
+                        </div>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo</label>
-                        <input type="number" name="minimum_stock" value="{{ old('minimum_stock', 5) }}" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <input type="number" name="minimum_stock" value="5" required
+                            class="w-full rounded-lg border-gray-300">
                     </div>
                 </div>
             </div>
 
-            {{-- Sección Dinámica: Presentaciones Adicionales (Bultos/Cajas) --}}
-            <div class="bg-white p-6 rounded-xl shadow" x-data="handler()">
+            {{-- Sección: Presentaciones --}}
+            <div class="bg-white p-6 rounded-xl shadow">
                 <div class="flex justify-between items-center mb-4 border-b pb-2">
                     <h2 class="text-xl font-semibold text-gray-700">Presentaciones (Bultos/Cajas)</h2>
-                    <button type="button" @click="add()"
-                        class="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition">
-                        + Agregar Bulto
+                    <button type="button" @click="addPresentation()"
+                        class="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">
+                        + Agregar Presentación
                     </button>
                 </div>
 
                 <div class="space-y-4">
                     <template x-for="(item, index) in presentations" :key="index">
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-xl bg-gray-50 items-end">
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-7 gap-3 p-4 border rounded-xl bg-gray-50 items-end relative">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase">Tipo</label>
+                                <label class="block text-xs font-bold text-gray-500">Tipo</label>
                                 <select :name="`presentations[${index}][type]`"
                                     class="w-full mt-1 rounded-lg border-gray-300 text-sm">
                                     <option value="pack">Paquete</option>
                                     <option value="box">Caja</option>
-                                    <option value="bulk">Bulto</option>
+                                    <option value="bulk" selected>Bulto</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase">Nombre</label>
-                                <input type="text" :name="`presentations[${index}][name]`" placeholder="Ej: Bulto x24"
+                                <label class="block text-xs font-bold text-gray-500">Nombre Base</label>
+                                <input type="text" :name="`presentations[${index}][name]`" placeholder="Ej: Harina Pan"
                                     class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase">Unidades</label>
+                                <label class="block text-xs font-bold text-gray-500">Unidades</label>
                                 <input type="number" :name="`presentations[${index}][quantity]`"
                                     class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
                             </div>
+
+                            {{-- Costo y Precio de Bultos con vista en USD --}}
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase">Precio Venta ($)</label>
-                                <input type="number" step="0.01" :name="`presentations[${index}][sale_price]`"
-                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
+                                <label class="block text-xs font-bold text-gray-500">Costo (Bs)</label>
+                                <div class="relative">
+                                    <input type="hidden" :name="`presentations[${index}][purchase_price]`"
+                                        :value="item.purchase_price">
+                                    <input type="text" x-model="item.purchase_price_str"
+                                        @input="item.purchase_price_str = formatCurrency(item.purchase_price_str); item.purchase_price = parseCurrency(item.purchase_price_str)"
+                                        @blur="if(item.purchase_price > 0) { item.sale_price = (item.purchase_price * 1.30).toFixed(2); item.sale_price_str = formatCurrency(item.sale_price.toString().replace('.', ',')) }"
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12" required>
+                                    <span class="absolute right-2 top-2.5 text-xs text-gray-500 font-bold">($<span
+                                            x-text="getUsd(item.purchase_price)"></span>)</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500">Venta (Bs)</label>
+                                <div class="relative">
+                                    <input type="hidden" :name="`presentations[${index}][sale_price]`"
+                                        :value="item.sale_price">
+                                    <input type="text" x-model="item.sale_price_str"
+                                        @input="item.sale_price_str = formatCurrency(item.sale_price_str); item.sale_price = parseCurrency(item.sale_price_str)"
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12 border-green-300"
+                                        required>
+                                    <span class="absolute right-2 top-2.5 text-xs text-green-700 font-bold">($<span
+                                            x-text="getUsd(item.sale_price)"></span>)</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500">Cód. Barras</label>
+                                <input type="text" :name="`presentations[${index}][sku_barcode]`"
+                                    @keydown.enter.prevent=""
+                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm bg-blue-50" required>
                             </div>
                             <div class="text-right">
-                                <button type="button" @click="remove(index)"
-                                    class="text-red-600 hover:text-red-800 font-medium text-sm">
-                                    Eliminar
-                                </button>
-                                <input type="hidden" :name="`presentations[${index}][purchase_price]`" value="0">
+                                <button type="button" @click="removePresentation(index)"
+                                    class="text-red-600 font-bold text-sm mb-2 hover:text-red-800">X</button>
+                                <input type="hidden" :name="`presentations[${index}][sku]`"
+                                    :value="`${sku}-B${index+1}`">
                             </div>
                         </div>
                     </template>
                 </div>
             </div>
 
-            <div class="flex justify-end">
+            <div class="flex justify-end pb-10">
                 <button type="submit"
-                    class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition-all transform hover:-translate-y-1">
-                    Guardar Producto e Inventario
+                    class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transform transition-all hover:-translate-y-1">
+                    Guardar Producto Completo
                 </button>
             </div>
-        </form>
-    </div>
+            {{-- Modal Nueva Categoría --}}
+            <div x-show="showCategoryModal" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto"
+                aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    {{-- Fondo oscuro --}}
+                    <div x-show="showCategoryModal" x-transition.opacity
+                        class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                        @click="showCategoryModal = false"></div>
 
-    {{-- Script para manejo dinámico --}}
-    <script>
-        function handler() {
-            return {
-                presentations: [],
-                add() {
-                    this.presentations.push({
-                        type: 'bulk',
-                        name: '',
-                        quantity: 0,
-                        sale_price: 0
-                    });
-                },
-                remove(index) {
-                    this.presentations.splice(index, 1);
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                    {{-- Contenedor del Modal --}}
+                    <div x-show="showCategoryModal" x-transition
+                        class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <h3 class="text-lg leading-6 font-bold text-gray-900 mb-4" id="modal-title">Crear Nueva
+                                Categoría</h3>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Categoría</label>
+                                <input type="text" x-model="newCategoryName" placeholder="Ej: Lácteos"
+                                    class="w-full rounded-lg border-gray-300 focus:border-blue-500"
+                                    @keydown.enter.prevent="saveCategory()">
+                                <p x-show="categoryError" x-text="categoryError"
+                                    class="text-red-500 text-sm mt-2 font-medium"></p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t">
+                            <button type="button" @click="saveCategory()" :disabled="isSavingCategory"
+                                class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
+                                <span x-show="!isSavingCategory">Guardar y Seleccionar</span>
+                                <span x-show="isSavingCategory">Guardando...</span>
+                            </button>
+                            <button type="button"
+                                @click="showCategoryModal = false; newCategoryName = ''; categoryError = ''"
+                                class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        {{-- Lógica Reactiva --}}
+        <script>
+            function productForm() {
+                return {
+                    // Recibimos la tasa desde el backend (por defecto 1 si no hay)
+                    rate: {{ $exchangeRate ?? 1 }},
+                    categoryId: '',
+                    name: '',
+                    sku: '',
+                    cost: 0,
+                    costStr: '',
+                    price: 0,
+                    priceStr: '',
+                    presentations: [],
+
+                    showCategoryModal: false,
+                    newCategoryName: '',
+                    isSavingCategory: false,
+                    categoryError: '',
+
+                    generateSku() {
+                        if (this.name && this.categoryId) {
+                            let selectEl = document.querySelector('select[name="category_id"]');
+                            let catName = selectEl.options[selectEl.selectedIndex].getAttribute('data-name') || 'CAT';
+
+                            let catPrefix = catName.substring(0, 3).toUpperCase();
+                            let namePrefix = this.name.substring(0, 3).toUpperCase();
+                            let randomNum = Math.floor(1000 + Math.random() * 9000);
+
+                            this.sku = `${catPrefix}-${namePrefix}-${randomNum}`;
+                        }
+                    },
+                    updateCostStr() {
+                        this.costStr = this.formatCurrency(this.costStr);
+                        this.cost = this.parseCurrency(this.costStr);
+                    },
+                    updatePriceStr() {
+                        this.priceStr = this.formatCurrency(this.priceStr);
+                        this.price = this.parseCurrency(this.priceStr);
+                    },
+                    formatCurrency(val) {
+                        if (!val) return '';
+                        val = val.toString().replace(/[^0-9,]/g, '');
+                        let parts = val.split(',');
+                        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        return parts.length > 1 ? parts[0] + ',' + parts[1].substring(0, 2) : parts[0];
+                    },
+                    parseCurrency(val) {
+                        if (!val) return 0;
+                        return parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
+                    },
+                    calculatePrice() {
+                        if (this.cost > 0) {
+                            // Costo en Bs + 30% de ganancia
+                            this.price = (parseFloat(this.cost) * 1.30).toFixed(2);
+                            this.priceStr = this.formatCurrency(this.price.toString().replace('.', ','));
+                        } else {
+                            this.price = 0;
+                            this.priceStr = '';
+                        }
+                    },
+                    getUsd(bsValue) {
+                        if (!bsValue || this.rate <= 0) return '0.00';
+                        // Divide los Bolívares entre la Tasa de Cambio
+                        return (parseFloat(bsValue) / this.rate).toFixed(2);
+                    },
+                    addPresentation() {
+                        this.presentations.push({
+                            type: 'bulk',
+                            name: '',
+                            quantity: 0,
+                            purchase_price: 0,
+                            purchase_price_str: '',
+                            sale_price: 0,
+                            sale_price_str: '',
+                            sku_barcode: ''
+                        });
+                    },
+                    removePresentation(index) {
+                        this.presentations.splice(index, 1);
+                    },
+                    async saveCategory() {
+                        if (!this.newCategoryName.trim()) {
+                            this.categoryError = 'El nombre de la categoría es obligatorio.';
+                            return;
+                        }
+
+                        this.isSavingCategory = true;
+                        this.categoryError = '';
+
+                        try {
+                            const response = await fetch('{{ route('admin.categories.quickStore') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]')
+                                        .value, // Toma el token del formulario principal
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    name: this.newCategoryName
+                                })
+                            });
+
+                            const data = await response.json();
+
+                            if (!response.ok) {
+                                // Muestra el mensaje de error de Laravel (ej: si ya existe)
+                                throw new Error(data.message || data.errors?.name?.[0] || 'Error al guardar.');
+                            }
+
+                            // 1. Agregar la nueva opción al elemento <select>
+                            const selectEl = document.getElementById('category_select');
+                            const newOption = new Option(data.category.name, data.category.id);
+                            newOption.setAttribute('data-name', data.category.name);
+                            selectEl.add(newOption);
+
+                            // 2. Seleccionar automáticamente la nueva categoría
+                            this.categoryId = data.category.id;
+
+                            // 3. Forzar actualización del SKU si ya había un nombre escrito
+                            this.generateSku();
+
+                            // 4. Cerrar y limpiar el modal
+                            this.showCategoryModal = false;
+                            this.newCategoryName = '';
+
+                        } catch (error) {
+                            this.categoryError = error.message;
+                        } finally {
+                            this.isSavingCategory = false;
+                        }
+                    }
                 }
             }
-        }
-    </script>
+        </script>
+    </div>
 @endsection

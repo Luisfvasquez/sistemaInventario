@@ -54,6 +54,12 @@ return new class extends Migration
                 ->default(0);
 
             /*
+            Tasa de cambio
+            */
+            $table->decimal('exchange_rate', 10, 4)
+                ->nullable();
+
+            /*
             Estado
             */
             $table->enum('status', [
