@@ -19,12 +19,7 @@ return new class extends Migration
                 ->cascadeOnUpdate()
                 ->cascadeOnDelete();
 
-            $table->enum('type', [
-                'unit',
-                'pack',
-                'box',
-                'bulk',
-            ]);
+            $table->foreignId('bulk_type_id')->constrained('bulk_types');
 
             $table->string('name');
 

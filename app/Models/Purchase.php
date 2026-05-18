@@ -22,6 +22,7 @@ class Purchase extends Model implements Auditable
         'tax',
         'discount',
         'total',
+        'exchange_rate',
         'status',
         'purchased_at',
         'notes',

@@ -11,7 +11,7 @@ class Bulk extends Model implements Auditable
 
     protected $fillable = [
         'product_id',
-        'type',
+        'bulk_type_id',
         'name',
         'description',
         'quantity',
@@ -34,6 +34,11 @@ class Bulk extends Model implements Auditable
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function bulkType()
+    {
+        return $this->belongsTo(BulkType::class);
     }
 
     public function purchaseDetails()

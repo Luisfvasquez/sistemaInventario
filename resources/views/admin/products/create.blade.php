@@ -33,7 +33,7 @@
             </div>
         @endif
         <form action="{{ route('admin.products.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6"
-            x-data="productForm()">
+            x-data="productForm()" @submit="isSubmitting = true">
             @csrf
 
             {{-- Notificación si no hay tasa de cambio --}}
@@ -119,6 +119,7 @@
             </div>
 
             {{-- Sección: Costos en Bs con conversión a USD --}}
+            {{-- Sección: Costos en Bs con conversión a USD y Lógica de Pesables --}}
             <div class="bg-white p-6 rounded-xl shadow">
                 <div class="flex justify-between items-center mb-4 border-b pb-2">
                     <h2 class="text-xl font-semibold text-gray-700">Configuración Base (Bs)</h2>
@@ -126,121 +127,147 @@
                             x-text="rate"></span></span>
                 </div>
 
+                {{-- Selector de tipo de unidad --}}
+                <div class="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <label class="block text-sm font-bold text-blue-800 mb-1">¿Cómo se mide este producto en su mínima
+                        expresión?</label>
+                    <select x-model="measureType"
+                        class="w-full md:w-1/3 rounded-lg border-blue-300 text-sm focus:ring-blue-500 bg-white">
+                        <option value="unit">Por Unidad / Pieza (Ej: 1 Refresco, 1 Empaque)</option>
+                        <option value="gram">Pesable en Gramos (Ej: Queso, Carne, Vegetales)</option>
+                    </select>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+
+                    {{-- Costo Visual (Lo que teclea el humano) --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Costo Compra (Bs)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Costo Compra <span x-text="measureType === 'gram' ? 'por KILO' : 'por UNIDAD'"
+                                class="font-bold text-indigo-600"></span> (Bs)
+                        </label>
                         <div class="relative">
-                            <input type="hidden" name="cost" :value="cost">
-                            <input type="text" x-model="costStr" @input="updateCostStr" @blur="calculatePrice" required
+                            <input type="number" step="0.01" x-model="displayCost" @blur="calculatePrice" required
                                 class="w-full rounded-lg border-gray-300 pr-20">
                             <span class="absolute right-3 top-2.5 text-gray-500 text-sm font-bold">($<span
-                                    x-text="getUsd(cost)"></span>)</span>
+                                    x-text="getUsd(displayCost)"></span>)</span>
                         </div>
                     </div>
 
+                    {{-- Precio Visual (Lo que teclea el humano) --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio Venta (Bs) <span
-                                class="text-xs text-green-600 font-bold ml-2">+30% Auto</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Precio Venta <span x-text="measureType === 'gram' ? 'por KILO' : 'por UNIDAD'"
+                                class="font-bold text-indigo-600"></span>
+                            <span class="text-xs text-green-600 font-bold ml-2">+30% Auto</span>
+                        </label>
                         <div class="relative">
-                            <input type="hidden" name="price" :value="price">
-                            <input type="text" x-model="priceStr" @input="updatePriceStr" required
+                            <input type="number" step="0.01" x-model="displayPrice" required
                                 class="w-full rounded-lg border-gray-300 pr-20 border-green-300 focus:ring-green-500">
                             <span class="absolute right-3 top-2.5 text-green-700 text-sm font-bold">($<span
-                                    x-text="getUsd(price)"></span>)</span>
+                                    x-text="getUsd(displayPrice)"></span>)</span>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cantudad Mínima Alerta</label>
                         <input type="number" name="minimum_stock" value="5" required
                             class="w-full rounded-lg border-gray-300">
                     </div>
+
+                    {{-- LOS CAMPOS OCULTOS (Lo que realmente se guarda en la Base de Datos para Laravel) --}}
+                    <input type="hidden" name="cost" :value="realCost()">
+                    <input type="hidden" name="price" :value="realPrice()">
+                    <input type="hidden" name="unit_type" :value="measureType">
+
                 </div>
             </div>
 
             {{-- Sección: Presentaciones --}}
             <div class="bg-white p-6 rounded-xl shadow">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h2 class="text-xl font-semibold text-gray-700">Presentaciones (Bultos/Cajas)</h2>
-                    <button type="button" @click="addPresentation()"
-                        class="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">
-                        + Agregar Presentación
-                    </button>
-                </div>
+                {{-- Sección: Presentaciones Dinámicas desde BD --}}
+                <div class="bg-white p-6 rounded-xl shadow">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h2 class="text-xl font-semibold text-gray-700">Presentaciones Especiales</h2>
+                        <button type="button" @click="addPresentation()"
+                            class="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">
+                            + Agregar Presentación
+                        </button>
+                    </div>
 
-                <div class="space-y-4">
-                    <template x-for="(item, index) in presentations" :key="index">
-                        <div
-                            class="grid grid-cols-1 md:grid-cols-7 gap-3 p-4 border rounded-xl bg-gray-50 items-end relative">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500">Tipo</label>
-                                <select :name="`presentations[${index}][type]`"
-                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm">
-                                    <option value="pack">Paquete</option>
-                                    <option value="box">Caja</option>
-                                    <option value="bulk" selected>Bulto</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500">Nombre Base</label>
-                                <input type="text" :name="`presentations[${index}][name]`" placeholder="Ej: Harina Pan"
-                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500">Unidades</label>
-                                <input type="number" :name="`presentations[${index}][quantity]`"
-                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
-                            </div>
+                    <div class="space-y-4">
+                        <template x-for="(item, index) in presentations" :key="index">
+                            <div class="grid grid-cols-1 md:grid-cols-7 gap-3 p-4 border rounded-xl bg-gray-50 items-end">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">Tipo</label>
+                                    {{-- Select alimentado por el array dinámico de Alpine --}}
+                                    <select :name="`presentations[${index}][bulk_type_id]`" x-model="item.bulk_type_id"
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm">
+                                        <option value="">Seleccione...</option>
+                                        <template x-for="type in dbBulkTypes" :key="type.id">
+                                            <option :value="type.id" x-text="type.name"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">Nombre Base</label>
+                                    <input type="text" :name="`presentations[${index}][name]`"
+                                        placeholder="Ej: Harina Pan"
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">Unidades/Gramos</label>
+                                    <input type="number" step="0.01" :name="`presentations[${index}][quantity]`"
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
+                                </div>
 
-                            {{-- Costo y Precio de Bultos con vista en USD --}}
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500">Costo (Bs)</label>
-                                <div class="relative">
-                                    <input type="hidden" :name="`presentations[${index}][purchase_price]`"
-                                        :value="item.purchase_price">
-                                    <input type="text" x-model="item.purchase_price_str"
-                                        @input="item.purchase_price_str = formatCurrency(item.purchase_price_str); item.purchase_price = parseCurrency(item.purchase_price_str)"
-                                        @blur="if(item.purchase_price > 0) { item.sale_price = (item.purchase_price * 1.30).toFixed(2); item.sale_price_str = formatCurrency(item.sale_price.toString().replace('.', ',')) }"
-                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12" required>
-                                    <span class="absolute right-2 top-2.5 text-xs text-gray-500 font-bold">($<span
-                                            x-text="getUsd(item.purchase_price)"></span>)</span>
+                                {{-- Costos y Precios con conversión dinámica a USD --}}
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">Costo (Bs)</label>
+                                    <div class="relative">
+                                        <input type="number" step="0.01"
+                                            :name="`presentations[${index}][purchase_price]`" x-model="item.purchase_price"
+                                            @blur="item.sale_price = (item.purchase_price * 1.30).toFixed(2)"
+                                            class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12" required>
+                                        <span class="absolute right-2 top-2.5 text-xs text-gray-500 font-bold">($<span
+                                                x-text="getUsd(item.purchase_price)"></span>)</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">Venta (Bs)</label>
+                                    <div class="relative">
+                                        <input type="number" step="0.01" :name="`presentations[${index}][sale_price]`"
+                                            x-model="item.sale_price"
+                                            class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12 border-green-300"
+                                            required>
+                                        <span class="absolute right-2 top-2.5 text-xs text-green-700 font-bold">($<span
+                                                x-text="getUsd(item.sale_price)"></span>)</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500">Cód. Barras</label>
+                                    <input type="text" :name="`presentations[${index}][sku_barcode]`"
+                                        @keydown.enter.prevent=""
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm bg-blue-50" required>
+                                </div>
+                                <div class="text-right">
+                                    <button type="button" @click="removePresentation(index)"
+                                        class="text-red-600 font-bold text-sm mb-2 hover:text-red-800">X</button>
+                                    <input type="hidden" :name="`presentations[${index}][sku]`"
+                                        :value="`${sku}-B${index+1}`">
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500">Venta (Bs)</label>
-                                <div class="relative">
-                                    <input type="hidden" :name="`presentations[${index}][sale_price]`"
-                                        :value="item.sale_price">
-                                    <input type="text" x-model="item.sale_price_str"
-                                        @input="item.sale_price_str = formatCurrency(item.sale_price_str); item.sale_price = parseCurrency(item.sale_price_str)"
-                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12 border-green-300"
-                                        required>
-                                    <span class="absolute right-2 top-2.5 text-xs text-green-700 font-bold">($<span
-                                            x-text="getUsd(item.sale_price)"></span>)</span>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500">Cód. Barras</label>
-                                <input type="text" :name="`presentations[${index}][sku_barcode]`"
-                                    @keydown.enter.prevent=""
-                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm bg-blue-50" required>
-                            </div>
-                            <div class="text-right">
-                                <button type="button" @click="removePresentation(index)"
-                                    class="text-red-600 font-bold text-sm mb-2 hover:text-red-800">X</button>
-                                <input type="hidden" :name="`presentations[${index}][sku]`"
-                                    :value="`${sku}-B${index+1}`">
-                            </div>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
                 </div>
             </div>
 
             <div class="flex justify-end pb-10">
-                <button type="submit"
-                    class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transform transition-all hover:-translate-y-1">
-                    Guardar Producto Completo
+                <button type="submit" x-bind:disabled="isSubmitting"
+                    x-text="isSubmitting ? 'Procesando Producto...' : 'Guardar Producto Completo'"
+                    :class="isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
+                    class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg transform transition-all hover:-translate-y-1">
                 </button>
             </div>
             {{-- Modal Nueva Categoría --}}
@@ -291,6 +318,7 @@
             function productForm() {
                 return {
                     // Recibimos la tasa desde el backend (por defecto 1 si no hay)
+                    isSubmitting: false,
                     rate: {{ $exchangeRate ?? 1 }},
                     categoryId: '',
                     name: '',
@@ -301,20 +329,50 @@
                     priceStr: '',
                     presentations: [],
 
+                    measureType: 'unit', // Por defecto es por unidad
+                    displayCost: 0, // El número visual (Ej: 9000 Bs el kilo)
+                    displayPrice: 0, // El número visual (Ej: 11700 Bs el kilo)
+
                     showCategoryModal: false,
                     newCategoryName: '',
                     isSavingCategory: false,
                     categoryError: '',
 
+                    dbBulkTypes: @json($bulkTypes),
+
+                    addPresentation() {
+                        this.presentations.push({
+                            bulk_type_id: '',
+                            name: '',
+                            quantity: 0,
+                            purchase_price: 0,
+                            sale_price: 0,
+                            sku_barcode: ''
+                        });
+                    },
+
+                    removePresentation(index) {
+                        this.presentations.splice(index, 1);
+                    },
+                    realCost() {
+                        if (this.measureType === 'gram') {
+                            return (parseFloat(this.displayCost || 0) / 1000).toFixed(4); // Divide entre 1000
+                        }
+                        return this.displayCost;
+                    },
+                    realPrice() {
+                        if (this.measureType === 'gram') {
+                            return (parseFloat(this.displayPrice || 0) / 1000).toFixed(4); // Divide entre 1000
+                        }
+                        return this.displayPrice;
+                    },
                     generateSku() {
                         if (this.name && this.categoryId) {
                             let selectEl = document.querySelector('select[name="category_id"]');
                             let catName = selectEl.options[selectEl.selectedIndex].getAttribute('data-name') || 'CAT';
-
                             let catPrefix = catName.substring(0, 3).toUpperCase();
                             let namePrefix = this.name.substring(0, 3).toUpperCase();
                             let randomNum = Math.floor(1000 + Math.random() * 9000);
-
                             this.sku = `${catPrefix}-${namePrefix}-${randomNum}`;
                         }
                     },
@@ -338,18 +396,12 @@
                         return parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
                     },
                     calculatePrice() {
-                        if (this.cost > 0) {
-                            // Costo en Bs + 30% de ganancia
-                            this.price = (parseFloat(this.cost) * 1.30).toFixed(2);
-                            this.priceStr = this.formatCurrency(this.price.toString().replace('.', ','));
-                        } else {
-                            this.price = 0;
-                            this.priceStr = '';
+                        if (this.displayCost > 0) {
+                            this.displayPrice = (parseFloat(this.displayCost) * 1.30).toFixed(2);
                         }
                     },
                     getUsd(bsValue) {
                         if (!bsValue || this.rate <= 0) return '0.00';
-                        // Divide los Bolívares entre la Tasa de Cambio
                         return (parseFloat(bsValue) / this.rate).toFixed(2);
                     },
                     addPresentation() {
@@ -418,7 +470,8 @@
                         } finally {
                             this.isSavingCategory = false;
                         }
-                    }
+                    },
+
                 }
             }
         </script>

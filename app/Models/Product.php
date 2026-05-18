@@ -24,6 +24,7 @@ class Product extends Model implements Auditable
         'brand',
         'cost',
         'price',
+        'unit_type',
         'track_inventory',
         'exchange_rate',
         'allow_negative_stock',
@@ -54,6 +55,38 @@ class Product extends Model implements Auditable
         }
 
         return 0;
+    }
+
+    /**
+     * Retorna el precio "display" (por kilo si es pesable, por unidad si no).
+     */
+    public function getDisplayPriceAttribute(): float
+    {
+        if ($this->unit_type === 'gram') {
+            return round($this->price * 1000, 2);
+        }
+
+        return (float) $this->price;
+    }
+
+    /**
+     * Retorna el costo "display" (por kilo si es pesable, por unidad si no).
+     */
+    public function getDisplayCostAttribute(): float
+    {
+        if ($this->unit_type === 'gram') {
+            return round($this->cost * 1000, 2);
+        }
+
+        return (float) $this->cost;
+    }
+
+    /**
+     * Etiqueta de la unidad para mostrar en vistas.
+     */
+    public function getUnitLabelAttribute(): string
+    {
+        return $this->unit_type === 'gram' ? '/Kg' : '/Und';
     }
 
     public function category()

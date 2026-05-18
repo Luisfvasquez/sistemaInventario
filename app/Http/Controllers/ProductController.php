@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BulkType;
 use App\Models\Category;
 use App\Models\Image;
 use App\Models\Product;
@@ -38,8 +39,9 @@ class ProductController extends Controller
     {
         $categories = Category::all();
         $exchangeRate = Cache::get('usd_exchange_rate');
+        $bulkTypes = BulkType::all();
 
-        return view('admin.products.create', compact('categories', 'exchangeRate'));
+        return view('admin.products.create', compact('categories', 'exchangeRate', 'bulkTypes'));
     }
 
     /**
@@ -47,52 +49,112 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. Validación de los datos de entrada
+        // 1. Verificar si existe un producto eliminado (soft-deleted) con el mismo sku_barcode o sku
+        $trashedProduct = Product::onlyTrashed()
+            ->where(function ($query) use ($request) {
+                $query->where('sku_barcode', $request->sku_barcode)
+                    ->orWhere('sku', $request->sku);
+            })
+            ->first();
+
+        // 2. Validación de los datos de entrada
+        // Si encontramos un producto eliminado, excluimos su ID de las reglas unique
+        $skuUniqueRule = 'required_without:sku_barcode|string|unique:products,sku'.($trashedProduct ? ','.$trashedProduct->id : '');
+        $skuBarcodeUniqueRule = 'required_without:sku|string|unique:products,sku_barcode'.($trashedProduct ? ','.$trashedProduct->id : '');
+
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|unique:products,sku',
-            'sku_barcode' => 'required|string|unique:products,sku_barcode',
+            'sku' => $skuUniqueRule,
+            'sku_barcode' => $skuBarcodeUniqueRule,
             'cost' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
+            'unit_type' => 'required|in:unit,gram',
             'brand' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'minimum_stock' => 'nullable|numeric|min:0',
             // Validamos el array de presentaciones adicionales (bultos, cajas) si vienen
             'presentations' => 'nullable|array',
+            'presentations.*.bulk_type_id' => 'required|exists:bulk_types,id', // <-- Validación dinámica
             'presentations.*.name' => 'required|string',
-            'presentations.*.type' => 'required|in:pack,box,bulk',
-            'presentations.*.quantity' => 'required|numeric|min:2', // Un bulto debe traer más de 1
+            'presentations.*.quantity' => 'required|numeric|min:0.01',
             'presentations.*.purchase_price' => 'required|numeric|min:0',
             'presentations.*.sale_price' => 'required|numeric|min:0',
             'presentations.*.sku' => 'required|string',
             'presentations.*.sku_barcode' => 'required|string',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240', // Máximo 10MB por imagen original
+        ], [
+            'name.required' => 'El nombre del producto es requerido.',
+            'sku.required' => 'El SKU del producto es requerido.',
+            'sku_barcode.required' => 'El código de barras del producto es requerido.',
+            'sku.unique' => 'El SKU ya existe en la base de datos.',
+            'sku_barcode.unique' => 'El código de barras ya existe en la base de datos.',
+            'presentations.*.name.required' => 'El nombre de la presentación es requerido.',
+            'presentations.*.type.required' => 'El tipo de presentación es requerido.',
+            'presentations.*.quantity.required' => 'La cantidad de la presentación es requerida.',
+            'presentations.*.purchase_price.required' => 'El precio de compra de la presentación es requerido.',
+            'presentations.*.sale_price.required' => 'El precio de venta de la presentación es requerido.',
+            'presentations.*.sku.unique' => 'El SKU de la presentación ya existe en la base de datos.',
+            'presentations.*.sku_barcode.unique' => 'El código de barras de la presentación ya existe en la base de datos.',
         ]);
 
         try {
             // Iniciamos la transacción
             DB::beginTransaction();
 
-            // 2. Crear el Producto Base
-            $product = Product::create([
-                'category_id' => $validated['category_id'],
-                'uuid' => Str::uuid(),
-                'name' => $validated['name'],
-                'slug' => Str::slug($validated['name']).'-'.uniqid(), // Evita colisiones de slugs
-                'description' => $validated['description'] ?? null,
-                'sku' => $validated['sku'],
-                'sku_barcode' => $validated['sku_barcode'],
-                'brand' => $validated['brand'] ?? null,
-                'cost' => $validated['cost'],
-                'price' => $validated['price'],
-                'created_by' => Auth::user()->id, // Quien lo creó
-            ]);
+            if ($trashedProduct) {
+                // ── RESTAURAR producto eliminado y actualizar todos sus campos ──
+                $trashedProduct->restore();
+
+                $trashedProduct->update([
+                    'category_id' => $validated['category_id'],
+                    'name' => $validated['name'],
+                    'slug' => Str::slug($validated['name']).'-'.uniqid(),
+                    'description' => $validated['description'] ?? null,
+                    'sku' => $validated['sku'],
+                    'sku_barcode' => $validated['sku_barcode'],
+                    'brand' => $validated['brand'] ?? null,
+                    'cost' => $validated['cost'],
+                    'price' => $validated['price'],
+                    'unit_type' => $validated['unit_type'],
+                    'status' => 'active',
+                    'created_by' => Auth::user()->id,
+                ]);
+
+                $product = $trashedProduct;
+
+                // Limpiar datos antiguos del producto restaurado
+                $product->bulks()->delete();
+                $this->deleteAllProductImages($product);
+                $product->inventory()->delete();
+
+                $successMessage = 'Producto restaurado y actualizado exitosamente (existía uno eliminado con el mismo SKU/Código de barras).';
+
+            } else {
+                // ── CREAR producto nuevo ──
+                $product = Product::create([
+                    'category_id' => $validated['category_id'],
+                    'uuid' => Str::uuid(),
+                    'name' => $validated['name'],
+                    'slug' => Str::slug($validated['name']).'-'.uniqid(),
+                    'description' => $validated['description'] ?? null,
+                    'sku' => $validated['sku'],
+                    'sku_barcode' => $validated['sku_barcode'],
+                    'brand' => $validated['brand'] ?? null,
+                    'cost' => $validated['cost'],
+                    'price' => $validated['price'],
+                    'unit_type' => $validated['unit_type'],
+                    'created_by' => Auth::user()->id,
+                ]);
+
+                $successMessage = 'Producto creado exitosamente junto con su inventario inicial.';
+            }
 
             // 3. Crear la Presentación Base (La Unidad)
             $product->bulks()->create([
-                'type' => 'unit',
-                'name' => 'Unidad',
+                'product_id' => $product->id,
+                'bulk_type_id' => 1,
+                'name' => $validated['name'],
                 'quantity' => 1,
                 'purchase_price' => $validated['cost'],
                 'sale_price' => $validated['price'],
@@ -105,12 +167,22 @@ class ProductController extends Controller
             // 4. Crear Presentaciones Adicionales (Bultos/Cajas) si el admin las agregó en el form
             if ($request->has('presentations')) {
                 foreach ($request->presentations as $presentation) {
+
+                    // Buscamos el tipo en la BD para obtener su nombre (Ej: "Bulto", "Kilo")
+                    $bulkType = BulkType::find($presentation['bulk_type_id']);
+                    $prefix = $bulkType ? $bulkType->name : 'Bulto';
+
+                    // Concatenamos dinámicamente Tipo + Nombre escrito
+                    $finalName = $prefix.' '.trim($presentation['name']);
+
                     $product->bulks()->create([
-                        'type' => $presentation['type'],
-                        'name' => $presentation['name'], // Ej: "Bulto x 24"
-                        'quantity' => $presentation['quantity'], // Ej: 24
+                        'bulk_type_id' => $presentation['bulk_type_id'],
+                        'name' => $finalName, // Se guarda como "Bulto Harina Pan" o "Kilo Queso"
+                        'quantity' => $presentation['quantity'],
                         'purchase_price' => $presentation['purchase_price'],
                         'sale_price' => $presentation['sale_price'],
+                        'sku' => $presentation['sku'],
+                        'sku_barcode' => $presentation['sku_barcode'],
                         'is_default' => false,
                         'is_active' => true,
                     ]);
@@ -163,7 +235,7 @@ class ProductController extends Controller
 
             // Redirigimos con un mensaje de éxito
             return redirect()->route('admin.products.index')
-                ->with('success', 'Producto creado exitosamente junto con su inventario inicial.');
+                ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             // Si algo falla, deshacemos todos los inserts para evitar datos corruptos
@@ -207,9 +279,11 @@ class ProductController extends Controller
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
+            'sku' => 'nullable|string|unique:products,sku,'.$product->id,
             'sku_barcode' => 'nullable|string|unique:products,sku_barcode,'.$product->id,
             'cost' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
+            'unit_type' => 'required|in:unit,gram',
             'brand' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'minimum_stock' => 'required|numeric|min:0',
@@ -230,6 +304,7 @@ class ProductController extends Controller
                 'brand' => $validated['brand'] ?? null,
                 'cost' => $validated['cost'],
                 'price' => $validated['price'],
+                'unit_type' => $validated['unit_type'],
                 'status' => $validated['status'],
             ]);
 
@@ -302,22 +377,59 @@ class ProductController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Elimina bulks, imágenes (archivos + BD) e inventario antes del soft-delete.
      */
     public function destroy(string $id)
     {
         try {
+            DB::beginTransaction();
+
             $product = Product::findOrFail($id);
+
+            // 1. Eliminar todas las presentaciones (bulks) del producto
+            $product->bulks()->delete();
+
+            // 2. Eliminar todas las imágenes del producto (archivos del disco + registros BD)
+            $this->deleteAllProductImages($product);
+
+            // 3. Eliminar el registro de inventario
+            $product->inventory()->delete();
+
+            // 4. Soft-delete del producto
             $product->delete();
-            $this->destroyImage($product->images()->first()->id);
+
+            DB::commit();
 
             return redirect()->route('admin.products.index')
                 ->with('success', 'Producto eliminado con éxito.');
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error($e->getMessage());
 
             return back()->withErrors([
                 'error' => 'Hubo un problema al eliminar el producto.',
             ]);
+        }
+    }
+
+    /**
+     * Elimina TODAS las imágenes de un producto (archivos del disco + registros BD).
+     */
+    private function deleteAllProductImages(Product $product): void
+    {
+        foreach ($product->images as $image) {
+            $directory = dirname($image->path);
+            $filename = basename($image->path);
+            $thumbPath = $directory.'/thumb_'.$filename;
+
+            Storage::disk($image->disk ?? 'public')->delete([$image->path, $thumbPath]);
+            $image->delete();
+        }
+
+        // Eliminar el directorio de imágenes del producto si existe
+        $productDir = 'products/'.$product->id;
+        if (Storage::disk('public')->exists($productDir)) {
+            Storage::disk('public')->deleteDirectory($productDir);
         }
     }
 

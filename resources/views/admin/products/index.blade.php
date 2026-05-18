@@ -102,7 +102,8 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
-                                    ${{ number_format($product->price, 2) }}
+                                    Bs.{{ number_format($product->display_price, 2, ',', '.') }}
+                                    <span class="text-xs font-normal text-gray-500">{{ $product->unit_label }}</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ $product->inventory->stock ?? 0 }} Unid.</div>
@@ -154,9 +155,9 @@
                                                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                                                 class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
 
-                                                {{-- ATENCIÓN AL ENCTYPE PARA LAS IMÁGENES --}}
                                                 <form action="{{ route('admin.products.update', $product->id) }}"
-                                                    method="POST" enctype="multipart/form-data">
+                                                    method="POST" enctype="multipart/form-data" x-data="{ enviando: false }"
+                                                    @submit="enviando = true">
                                                     @csrf
                                                     @method('PUT')
 
@@ -191,37 +192,65 @@
                                                                     @endforeach
                                                                 </select>
                                                             </div>
-                                                            <div>
-                                                                <label class="block text-sm font-medium text-gray-700">SKU
-                                                                    /
-                                                                    Cód. Barras</label>
-                                                                <input type="text" name="sku_barcode"
-                                                                    value="{{ $product->sku_barcode }}"
-                                                                    class="mt-1 w-full rounded-lg border-gray-300 text-sm"
-                                                                    required>
-                                                            </div>
 
-                                                            {{-- Costo y Precio --}}
                                                             <div class="grid grid-cols-2 gap-2">
                                                                 <div>
                                                                     <label
-                                                                        class="block text-sm font-medium text-gray-700">Costo
-                                                                        ($)
-                                                                    </label>
-                                                                    <input type="number" step="0.01" name="cost"
-                                                                        value="{{ $product->cost }}"
+                                                                        class="block text-sm font-medium text-gray-700">SKU</label>
+                                                                    <input type="text" name="sku"
+                                                                        value="{{ $product->sku }}"
                                                                         class="mt-1 w-full rounded-lg border-gray-300 text-sm"
                                                                         required>
+                                                                </div>
+                                                                <div>
+                                                                    <label
+                                                                        class="block text-sm font-medium text-gray-700">SKU
+                                                                        / Cód. Barras</label>
+                                                                    <input type="text" name="sku_barcode"
+                                                                        value="{{ $product->sku_barcode }}"
+                                                                        class="mt-1 w-full rounded-lg border-gray-300 text-sm"
+                                                                        required>
+                                                                </div>
+                                                            </div>
+
+                                                            {{-- Costo y Precio --}}
+                                                            <div class="grid grid-cols-2 gap-2"
+                                                                x-data="{
+                                                                    unitType: '{{ $product->unit_type ?? 'unit' }}',
+                                                                    editCost: {{ $product->display_cost }},
+                                                                    editPrice: {{ $product->display_price }},
+                                                                    getRealCost() {
+                                                                        return this.unitType === 'gram' ? (parseFloat(this.editCost || 0) / 1000).toFixed(4) : this.editCost;
+                                                                    },
+                                                                    getRealPrice() {
+                                                                        return this.unitType === 'gram' ? (parseFloat(this.editPrice || 0) / 1000).toFixed(4) : this.editPrice;
+                                                                    }
+                                                                }">
+                                                                <div>
+                                                                    <label
+                                                                        class="block text-sm font-medium text-gray-700">Costo
+                                                                        (Bs.)
+                                                                        <span x-show="unitType === 'gram'" class="text-xs text-indigo-600 font-bold">/Kg</span>
+                                                                        <span x-show="unitType === 'unit'" class="text-xs text-gray-500 font-bold">/Und</span>
+                                                                    </label>
+                                                                    <input type="number" step="0.01" x-model="editCost"
+                                                                        class="mt-1 w-full rounded-lg border-gray-300 text-sm"
+                                                                        required>
+                                                                    <input type="hidden" name="cost" :value="getRealCost()">
                                                                 </div>
                                                                 <div>
                                                                     <label
                                                                         class="block text-sm font-medium text-gray-700">Precio
-                                                                        ($)</label>
-                                                                    <input type="number" step="0.01" name="price"
-                                                                        value="{{ $product->price }}"
+                                                                        (Bs.)
+                                                                        <span x-show="unitType === 'gram'" class="text-xs text-indigo-600 font-bold">/Kg</span>
+                                                                        <span x-show="unitType === 'unit'" class="text-xs text-gray-500 font-bold">/Und</span>
+                                                                    </label>
+                                                                    <input type="number" step="0.01" x-model="editPrice"
                                                                         class="mt-1 w-full rounded-lg border-gray-300 text-sm"
                                                                         required>
+                                                                    <input type="hidden" name="price" :value="getRealPrice()">
                                                                 </div>
+                                                                <input type="hidden" name="unit_type" :value="unitType">
                                                             </div>
 
                                                             {{-- Estado y Stock Mínimo --}}
@@ -298,9 +327,10 @@
                                                     </div>
 
                                                     <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                                        <button type="submit"
-                                                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm transition-colors">
-                                                            Guardar Cambios
+                                                        <button type="submit" :disabled="enviando"
+                                                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                                            <span
+                                                                x-text="enviando ? 'Guardando...' : 'Guardar Cambios'"></span>
                                                         </button>
                                                         <button type="button" @click="openEdit = false"
                                                             class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors">

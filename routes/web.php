@@ -6,6 +6,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,7 +30,9 @@ Route::middleware(['auth', 'role:admin'])
             ->name('admin.categories.quickStore');
         Route::resource('suppliers', SupplierController::class)->names('admin.suppliers');
         Route::resource('inventories', InventoryController::class)->names('admin.inventories');
-        Route::resource('purchases', InventoryController::class)->names('admin.purchases');
+        Route::get('purchases/index', [PurchaseController::class, 'index'])->name('admin.purchases.index');
+        Route::get('purchases/create', [PurchaseController::class, 'create'])->name('admin.purchases.create');
+        Route::post('purchases', [PurchaseController::class, 'store'])->name('admin.purchases.store');
         Route::resource('orders', InventoryController::class)->names('admin.orders');
     });
 
