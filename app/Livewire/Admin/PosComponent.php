@@ -5,12 +5,12 @@ namespace App\Livewire\Admin;
 use App\Models\AccountReceivable;
 use App\Models\Bulk;
 use App\Models\Client;
+use App\Models\ExchangeRate;
 use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\OrderPayment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -45,7 +45,8 @@ class PosComponent extends Component
 
     public function mount()
     {
-        $this->exchange_rate = Cache::get('exchange_rate', 1);
+        $rate = ExchangeRate::where('is_active', true)->first();
+        $this->exchange_rate = $rate ? (float) $rate->rate : 1;
         $this->available_payment_methods = PaymentMethod::where('is_active', true)->get();
 
         if ($this->available_payment_methods->count() > 0) {
@@ -117,7 +118,7 @@ class PosComponent extends Component
         }
 
         // C. Si la lectora no encontró nada, o el usuario está tipeando un nombre...
-        $this->search_results = Product::with(['inventory', 'bulks' => fn ($q) => $q->where('is_active', true)])
+        $this->search_results = Product::with(['inventory', 'bulks'])
             ->where('name', 'like', '%'.$query.'%')
             ->where('status', 'active')
             ->take(8) // Limitamos a 8 para no saturar la vista
@@ -181,11 +182,6 @@ class PosComponent extends Component
 
     public function calculateTotals()
     {
-        // Recalcular el subtotal de cada ítem según la cantidad actual
-        foreach ($this->cart as $index => $item) {
-            $this->cart[$index]['subtotal'] = round((float) $item['quantity'] * (float) $item['price'], 2);
-        }
-
         $total_order = collect($this->cart)->sum('subtotal');
 
         $this->amount_received = collect($this->payments)->sum(function ($payment) {
@@ -288,6 +284,7 @@ class PosComponent extends Component
                     ]);
                 }
             }
+
             // D. CUENTAS POR COBRAR (FIADOS)
             if ($this->amount_pending > 0) {
                 AccountReceivable::create([

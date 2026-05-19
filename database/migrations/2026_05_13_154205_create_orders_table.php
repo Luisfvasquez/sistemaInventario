@@ -74,6 +74,7 @@ return new class extends Migration
                 'pending',
                 'processing',
                 'ready_for_pickup',
+                'completed',
                 'delivered',
                 'cancelled',
             ])->default('pending');

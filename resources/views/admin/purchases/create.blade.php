@@ -28,16 +28,45 @@
             <div class="bg-white p-6 rounded-xl shadow grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
-                    <select name="supplier_id" required class="w-full rounded-lg border-gray-300 focus:ring-blue-500">
-                        <option value="">Seleccione Proveedor</option>
-                        @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
-                        @endforeach
-                    </select>
+                    <div class="flex items-center space-x-4 mb-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="radio" class="form-radio text-blue-600" name="supplier_type" value="existing"
+                                :checked="!isNewSupplier" @change="isNewSupplier = false">
+                            <span class="ml-2 text-sm text-gray-700">Existente</span>
+                        </label>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="radio" class="form-radio text-blue-600" name="supplier_type" value="new"
+                                :checked="isNewSupplier" @change="isNewSupplier = true">
+                            <span class="ml-2 text-sm text-gray-700">Nuevo</span>
+                        </label>
+                    </div>
+
+                    <div x-show="!isNewSupplier">
+                        <select name="supplier_id" class="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                            x-bind:required="!isNewSupplier">
+                            <option value="">Seleccione Proveedor</option>
+                            @foreach ($suppliers as $supplier)
+                                <option value="{{ $supplier->id }}">{{ $supplier->name }} - {{ $supplier->rif }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div x-show="isNewSupplier" class="space-y-2">
+                        <input type="text" name="new_supplier_rif" placeholder="RIF (Ej: J-12345678-9)"
+                            class="w-full rounded-lg border-gray-300 text-sm" x-bind:required="isNewSupplier"
+                            oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()"
+                            title="Solo letras, números y guiones (Ej: J12345678-9)">
+                        <input type="text" name="new_supplier_name" placeholder="Nombre (Opcional)"
+                            class="w-full rounded-lg border-gray-300 text-sm"
+                            oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s\-\.]/g, '')"
+                            title="Solo letras y espacios">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nº Factura / Recibo</label>
-                    <input type="text" name="purchase_code" required class="w-full rounded-lg border-gray-300">
+                    <input type="text" name="purchase_code" required class="w-full rounded-lg border-gray-300"
+                        oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-\/]/g, '').toUpperCase()"
+                        title="Solo letras, números, guiones y barras (Ej: FAC-0001)">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Compra</label>
@@ -46,7 +75,9 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nota (Opcional)</label>
-                    <input type="text" name="notes" class="w-full rounded-lg border-gray-300">
+                    <input type="text" name="notes" class="w-full rounded-lg border-gray-300"
+                        oninput="this.value = this.value.replace(/[<>{}\[\]]/g, '')"
+                        title="Texto libre (sin caracteres especiales como &lt; &gt; { } [ ])">
                 </div>
             </div>
 
@@ -88,10 +119,12 @@
                             <div class="md:col-span-2">
                                 <label class="block text-xs font-bold text-gray-500">Presentación comprada</label>
                                 <select :name="`items[${index}][bulk_id]`" x-model="row.bulk_id"
-                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
+                                    @change="updateUnitCost(index)" class="w-full mt-1 rounded-lg border-gray-300 text-sm"
+                                    required>
                                     <option value="">Seleccione...</option>
                                     <template x-for="bulk in row.availableBulks" :key="bulk.id">
-                                        <option :value="bulk.id" x-text="bulk.name + ' (Trae ' + bulk.quantity + ')'">
+                                        <option :value="bulk.id"
+                                            x-text="bulk.name + ' (Trae ' + bulk.quantity + ')'">
                                         </option>
                                     </template>
                                 </select>
@@ -100,15 +133,22 @@
                             {{-- Cantidad Comprada --}}
                             <div class="md:col-span-2">
                                 <label class="block text-xs font-bold text-gray-500">Cantidad (Ej: 5 Kilos)</label>
-                                <input type="number" step="0.01" :name="`items[${index}][quantity]`"
-                                    x-model="row.quantity" class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
+                                <input type="number" :step="row.unit_type === 'gram' ? '0.01' : '1'"
+                                    :min="row.unit_type === 'gram' ? '0.01' : '1'" :name="`items[${index}][quantity]`"
+                                    x-model="row.quantity" class="w-full mt-1 rounded-lg border-gray-300 text-sm" required
+                                    inputmode="decimal"
+                                    oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                    title="Solo números positivos">
                             </div>
 
                             {{-- Costo Unitario --}}
                             <div class="md:col-span-2">
                                 <label class="block text-xs font-bold text-gray-500">Costo Unit. (Bs)</label>
-                                <input type="number" step="0.01" :name="`items[${index}][unit_cost]`"
-                                    x-model="row.unit_cost" class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
+                                <input type="number" step="0.01" min="0" :name="`items[${index}][unit_cost]`"
+                                    x-model="row.unit_cost" class="w-full mt-1 rounded-lg border-gray-300 text-sm"
+                                    required inputmode="decimal"
+                                    oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                    title="Solo números positivos">
                             </div>
 
                             {{-- Subtotal (Solo visual) --}}
@@ -155,6 +195,7 @@
         function purchaseForm() {
             return {
                 isSubmitting: false,
+                isNewSupplier: false,
                 exchangeRate: {{ cache('usd_exchange_rate', 1) }},
                 productsList: @json($products),
                 rows: [],
@@ -169,7 +210,8 @@
                         bulk_id: '',
                         availableBulks: [],
                         quantity: 1,
-                        unit_cost: 0
+                        unit_cost: 0,
+                        unit_type: 'unit'
                     });
                 },
 
@@ -186,16 +228,32 @@
 
                     if (product) {
                         // Carga solo las presentaciones de ese producto específico
+                        this.rows[index].unit_type = product.unit_type; // Guardamos el tipo para validación
                         this.rows[index].availableBulks = product.bulks;
                         this.rows[index].bulk_id = ''; // Resetea el select secundario
+                        this.rows[index].unit_cost = 0; // Se resetea hasta elegir la presentación
+                        // Formatear cantidad en caso de cambio
+                        this.rows[index].quantity = product.unit_type === 'gram' ? parseFloat(this.rows[index].quantity ||
+                            1).toFixed(2) : parseInt(this.rows[index].quantity || 1);
+                    } else {
+                        this.rows[index].unit_type = 'unit';
+                        this.rows[index].availableBulks = [];
+                        this.rows[index].bulk_id = '';
+                        this.rows[index].unit_cost = 0;
+                    }
+                },
 
-                        // Si existe una presentación base por defecto, podemos pre-cargarle el costo sugerido
-                        let defaultBulk = product.bulks.find(b => b.is_default);
-                        if (defaultBulk) {
-                            this.rows[index].unit_cost = defaultBulk.purchase_price;
+                // Esta función se ejecuta cuando el usuario selecciona la presentación comprada
+                updateUnitCost(index) {
+                    let selectedBulkId = this.rows[index].bulk_id;
+                    if (selectedBulkId) {
+                        let bulk = this.rows[index].availableBulks.find(b => b.id == selectedBulkId);
+                        if (bulk) {
+                            // Se asigna dinámicamente el precio de compra del bulto o unidad seleccionado
+                            this.rows[index].unit_cost = bulk.purchase_price || 0;
                         }
                     } else {
-                        this.rows[index].availableBulks = [];
+                        this.rows[index].unit_cost = 0;
                     }
                 },
 

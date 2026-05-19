@@ -28,6 +28,7 @@ class Order extends Model implements Auditable
         'discount',
         'total',
         'notes',
+        'exchange_rate',
         'verified_at',
         'delivered_at',
     ];

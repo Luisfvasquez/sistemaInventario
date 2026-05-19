@@ -29,7 +29,7 @@ class PurchaseController extends Controller
     {
         $suppliers = Supplier::where('is_active', true)->get();
         // Cargamos los productos con sus presentaciones (bulks) para usarlos en JavaScript (Alpine)
-        $products = Product::with(['bulks', 'inventory'])->where('status', 'active')->get();
+        $products = Product::with(['bulks.bulkType', 'inventory'])->where('status', 'active')->get();
 
         return view('admin.purchases.create', compact('suppliers', 'products'));
     }
@@ -37,7 +37,9 @@ class PurchaseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => 'required_without:new_supplier_rif|nullable|exists:suppliers,id',
+            'new_supplier_rif' => 'required_without:supplier_id|nullable|string',
+            'new_supplier_name' => 'nullable|string',
             'purchase_code' => 'required|string|unique:purchases,purchase_code',
             'purchased_at' => 'required|date',
             'notes' => 'nullable|string',
@@ -57,10 +59,21 @@ class PurchaseController extends Controller
         try {
             DB::beginTransaction();
 
+            $supplierId = $request->supplier_id;
+            
+            // Si el usuario proporcionó un RIF para un nuevo proveedor
+            if ($request->filled('new_supplier_rif')) {
+                $supplier = Supplier::firstOrCreate(
+                    ['rif' => $request->new_supplier_rif],
+                    ['name' => $request->new_supplier_name]
+                );
+                $supplierId = $supplier->id;
+            }
+
             // 1. Crear la Cabecera de la Compra
             $purchase = Purchase::create([
                 'uuid' => Str::uuid(),
-                'supplier_id' => $request->supplier_id,
+                'supplier_id' => $supplierId,
                 'user_id' => auth()->id(),
                 'purchase_code' => $request->purchase_code,
                 'subtotal' => 0, // Lo calcularemos iterando por seguridad

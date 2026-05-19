@@ -39,20 +39,27 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo / Razón Social</label>
                         <input type="text" name="name" value="{{ old('name') }}" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s\-\.\,\']/g, '')"
+                            title="Solo letras, espacios y puntuación básica">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Cédula o RIF</label>
                         <input type="text" name="identification" value="{{ old('identification') }}" required
                             placeholder="Ej: V-12345678 o J-123456789"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()"
+                            title="Solo letras, números y guiones (Ej: V-12345678)">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono de Contacto</label>
-                        <input type="text" name="phone" value="{{ old('phone') }}" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <input type="tel" name="phone" value="{{ old('phone') }}" required
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            oninput="this.value = this.value.replace(/[^0-9\+\-\s\(\)]/g, '')"
+                            title="Solo números, guiones, paréntesis y el signo +"
+                            placeholder="Ej: 0412-1234567">
                     </div>
 
                     <div>
@@ -65,8 +72,8 @@
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Dirección Fiscal</label>
-                        <textarea name="address" rows="3" required
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                        <textarea name="address" rows="3"
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">{{ old('address') }}</textarea>
                     </div>
                 </div>
@@ -110,7 +117,9 @@
             </div>
 
             <div class="flex justify-end">
-                <button type="submit"
+                <button type="submit" x-data="{ enviando: false }" @submit.window="enviando = true"
+                    :disabled="enviando"
+                    :class="enviando ? 'opacity-50 cursor-not-allowed bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'"
                     class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition-all transform hover:-translate-y-1">
                     Guardar Registro de Cliente
                 </button>

@@ -89,26 +89,34 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
                         <input type="text" name="name" x-model="name" @input.debounce.500ms="generateSku" required
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500">
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500"
+                            oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s\-\.]/g, '')"
+                            title="Solo se permiten letras, números y espacios">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">SKU (Auto-generado / Editable)</label>
                         <input type="text" name="sku" x-model="sku" required
-                            class="w-full rounded-lg border-gray-300 bg-yellow-50 focus:border-blue-500">
+                            class="w-full rounded-lg border-gray-300 bg-yellow-50 focus:border-blue-500"
+                            oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-_]/g, '').toUpperCase()"
+                            title="Solo letras, números, guiones y guiones bajos">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Cód. Barras (Pistola escáner)</label>
                         <input type="text" name="sku_barcode" @keydown.enter.prevent="" required
-                            class="w-full rounded-lg border-gray-300 bg-blue-50 focus:bg-white transition-colors" autofocus>
+                            class="w-full rounded-lg border-gray-300 bg-blue-50 focus:bg-white transition-colors" autofocus
+                            oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '')"
+                            title="Solo letras, números y guiones (código de barras)">
                     </div>
 
                     {{-- Añadidos Marca y Descripción --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Marca</label>
                         <input type="text" name="brand" value="{{ old('brand') }}"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500">
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500"
+                            oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s\-\.]/g, '')"
+                            title="Solo letras, números y espacios">
                     </div>
 
                     <div class="md:col-span-2">
@@ -147,8 +155,11 @@
                                 class="font-bold text-indigo-600"></span> (Bs)
                         </label>
                         <div class="relative">
-                            <input type="number" step="0.01" x-model="displayCost" @blur="calculatePrice" required
-                                class="w-full rounded-lg border-gray-300 pr-20">
+                            <input type="number" step="0.01" min="0" x-model="displayCost" @blur="calculatePrice" required
+                                class="w-full rounded-lg border-gray-300 pr-20"
+                                inputmode="decimal"
+                                oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                title="Solo números positivos">
                             <span class="absolute right-3 top-2.5 text-gray-500 text-sm font-bold">($<span
                                     x-text="getUsd(displayCost)"></span>)</span>
                         </div>
@@ -162,17 +173,23 @@
                             <span class="text-xs text-green-600 font-bold ml-2">+30% Auto</span>
                         </label>
                         <div class="relative">
-                            <input type="number" step="0.01" x-model="displayPrice" required
-                                class="w-full rounded-lg border-gray-300 pr-20 border-green-300 focus:ring-green-500">
+                            <input type="number" step="0.01" min="0" x-model="displayPrice" required
+                                class="w-full rounded-lg border-gray-300 pr-20 border-green-300 focus:ring-green-500"
+                                inputmode="decimal"
+                                oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                title="Solo números positivos">
                             <span class="absolute right-3 top-2.5 text-green-700 text-sm font-bold">($<span
                                     x-text="getUsd(displayPrice)"></span>)</span>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Cantudad Mínima Alerta</label>
-                        <input type="number" name="minimum_stock" value="5" required
-                            class="w-full rounded-lg border-gray-300">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad Mínima Alerta</label>
+                        <input type="number" name="minimum_stock" value="5" min="0" step="1" required
+                            class="w-full rounded-lg border-gray-300"
+                            inputmode="numeric"
+                            oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                            title="Solo números enteros positivos">
                     </div>
 
                     {{-- LOS CAMPOS OCULTOS (Lo que realmente se guarda en la Base de Datos para Laravel) --}}
@@ -213,22 +230,30 @@
                                     <label class="block text-xs font-bold text-gray-500">Nombre Base</label>
                                     <input type="text" :name="`presentations[${index}][name]`"
                                         placeholder="Ej: Harina Pan"
-                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm" required
+                                        oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s\-\.]/g, '')"
+                                        title="Solo letras, números y espacios">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500">Unidades/Gramos</label>
-                                    <input type="number" step="0.01" :name="`presentations[${index}][quantity]`"
-                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm" required>
+                                    <input type="number" step="0.01" min="0" :name="`presentations[${index}][quantity]`"
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm" required
+                                        inputmode="decimal"
+                                        oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                        title="Solo números positivos">
                                 </div>
 
                                 {{-- Costos y Precios con conversión dinámica a USD --}}
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500">Costo (Bs)</label>
                                     <div class="relative">
-                                        <input type="number" step="0.01"
+                                        <input type="number" step="0.01" min="0"
                                             :name="`presentations[${index}][purchase_price]`" x-model="item.purchase_price"
                                             @blur="item.sale_price = (item.purchase_price * 1.30).toFixed(2)"
-                                            class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12" required>
+                                            class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12" required
+                                            inputmode="decimal"
+                                            oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                            title="Solo números positivos">
                                         <span class="absolute right-2 top-2.5 text-xs text-gray-500 font-bold">($<span
                                                 x-text="getUsd(item.purchase_price)"></span>)</span>
                                     </div>
@@ -236,10 +261,13 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500">Venta (Bs)</label>
                                     <div class="relative">
-                                        <input type="number" step="0.01" :name="`presentations[${index}][sale_price]`"
+                                        <input type="number" step="0.01" min="0" :name="`presentations[${index}][sale_price]`"
                                             x-model="item.sale_price"
                                             class="w-full mt-1 rounded-lg border-gray-300 text-sm pr-12 border-green-300"
-                                            required>
+                                            required
+                                            inputmode="decimal"
+                                            oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                            title="Solo números positivos">
                                         <span class="absolute right-2 top-2.5 text-xs text-green-700 font-bold">($<span
                                                 x-text="getUsd(item.sale_price)"></span>)</span>
                                     </div>
@@ -249,7 +277,9 @@
                                     <label class="block text-xs font-bold text-gray-500">Cód. Barras</label>
                                     <input type="text" :name="`presentations[${index}][sku_barcode]`"
                                         @keydown.enter.prevent=""
-                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm bg-blue-50" required>
+                                        class="w-full mt-1 rounded-lg border-gray-300 text-sm bg-blue-50" required
+                                        oninput="this.value = this.value.replace(/[^a-zA-Z0-9\-]/g, '')"
+                                        title="Solo letras, números y guiones (código de barras)">
                                 </div>
                                 <div class="text-right">
                                     <button type="button" @click="removePresentation(index)"
@@ -291,7 +321,9 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Categoría</label>
                                 <input type="text" x-model="newCategoryName" placeholder="Ej: Lácteos"
                                     class="w-full rounded-lg border-gray-300 focus:border-blue-500"
-                                    @keydown.enter.prevent="saveCategory()">
+                                    @keydown.enter.prevent="saveCategory()"
+                                    oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s\-\.]/g, '')"
+                                    title="Solo letras y espacios">
                                 <p x-show="categoryError" x-text="categoryError"
                                     class="text-red-500 text-sm mt-2 font-medium"></p>
                             </div>

@@ -29,8 +29,8 @@ class ClientController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'identification' => 'required|string|unique:clients,identification', // Cédula o RIF
-            'phone' => 'required|string|max:50',
-            'address' => 'required|string',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string',
             'create_account' => 'nullable|boolean',
         ];
 
@@ -65,6 +65,7 @@ class ClientController extends Controller
 
             // 4. Crear el perfil del cliente
             Client::create([
+                'uuid' => \Illuminate\Support\Str::uuid(),
                 'user_id' => $userId, // Queda en null si no se creó cuenta web
                 'name' => $validated['name'],
                 'identification' => trim($validated['identification']),
@@ -109,7 +110,29 @@ class ClientController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $client = Client::findOrFail($id);
+
+        $rules = [
+            'name' => 'required|string|max:50',
+            'identification' => 'required|string|max:50|unique:clients,identification,'.$client->id,
+            'phone' => 'nullable|string|max:15',
+            'address' => 'nullable|string',
+            'is_active' => 'nullable|boolean',
+            'email' => 'nullable|email|unique:clients,email,'.$client->id,
+        ];
+
+        $validated = $request->validate($rules);
+
+        $client->update([
+            'name' => $validated['name'],
+            'phone' => $validated['phone'],
+            'address' => $validated['address'],
+            'email' => $validated['email'] ?? $client->email,
+            'is_active' => $request->boolean('is_active', $client->is_active),
+        ]);
+
+        return redirect()->route('admin.clients.index')
+            ->with('success', 'Cliente actualizado correctamente.');
     }
 
     /**

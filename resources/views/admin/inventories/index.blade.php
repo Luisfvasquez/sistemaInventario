@@ -153,7 +153,10 @@
                                                         <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
                                                             <button type="button" @click="openAdjust = false"
                                                                 class="text-gray-700 font-medium">Cancelar</button>
-                                                            <button type="submit"
+                                                            <button type="submit"x-data="{ enviando: false }"
+                                                                @submit.window="enviando = true" :disabled="enviando"
+                                                                :class="enviando ? 'bg-gray-400 cursor-not-allowed' :
+                                                                    'bg-blue-600 hover:bg-blue-700'"
                                                                 class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700">Procesar
                                                                 Ajuste</button>
                                                         </div>

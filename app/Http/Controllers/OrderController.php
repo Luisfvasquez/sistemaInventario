@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountReceivable;
 use App\Models\Bulk;
 use App\Models\Client;
-use App\Models\ExchangeRate;
+use App\Models\InventoryMovement;
 use App\Models\Order;
+use App\Models\OrderPayment;
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,102 +18,199 @@ class OrderController extends Controller
 {
     public function index()
     {
-        // Cargamos clientes activos
-        $clients = Client::where('is_active', true)->get();
+        $orders = Order::with(['client', 'details.product', 'details.bulk'])->orderBy('created_at', 'desc')->get();
 
-        // Cargamos productos activos con su inventario y presentaciones
-        // Es vital cargar el inventario para que AlpineJS sepa cuánto stock queda
-        $products = Product::with(['bulks', 'inventory'])->where('status', 'active')->get();
-
-        return view('admin.orders.create', compact('clients', 'products'));
+        return view('admin.orders.index', compact('orders'));
     }
 
-    public function store(Request $request)
+    public function create()
     {
-        $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.bulk_id' => 'required|exists:bulks,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0',
+        $paymentMethods = PaymentMethod::where('is_active', true)->get();
+
+        return view('admin.orders.create', compact('paymentMethods'));
+    }
+
+    // ==========================================
+    // API ENDPOINTS PARA ALPINE.JS
+    // ==========================================
+    public function searchProduct(Request $request)
+    {
+        $query = $request->get('q');
+        if (! $query) {
+            return response()->json([]);
+        }
+
+        // Buscar primero coincidencia exacta por código de barras en Producto o Bulto
+        $exactProduct = Product::with(['inventory', 'bulks'])->where('sku_barcode', $query)->where('status', 'active')->first();
+        if ($exactProduct) {
+            return response()->json(['exact' => true, 'data' => $exactProduct]);
+        }
+
+        $exactBulk = Bulk::with('product.inventory')->where('sku_barcode', $query)->first();
+        if ($exactBulk && $exactBulk->product->status === 'active') {
+            // Transformamos para que el frontend lo lea igual
+            $bulkProduct = clone $exactBulk->product;
+            $bulkProduct->bulks = collect([$exactBulk]);
+
+            return response()->json(['exact' => true, 'data' => $bulkProduct]);
+        }
+
+        // Si no es código de barras, buscar por nombre
+        $products = Product::with(['inventory', 'bulks'])
+            ->where('name', 'like', "%{$query}%")
+            ->where('status', 'active')
+            ->take(10)
+            ->get();
+
+        return response()->json(['exact' => false, 'data' => $products]);
+    }
+
+    public function searchClient(Request $request)
+    {
+        $query = $request->get('q');
+        $client = Client::where('identification', $query)->first();
+
+        return response()->json(['client' => $client]); // Retorna null si no existe
+    }
+
+    public function storeClient(Request $request)
+    {
+        $request->validate(['identification' => 'required|string|unique:clients,identification']);
+
+        $client = Client::create([
+            'uuid' => Str::uuid(),
+            'identification' => $request->identification,
+            'name' => 'Consumidor Final', // Nombre por defecto
+            'is_active' => true,
         ]);
 
-        $currentRate = ExchangeRate::where('is_active', true)->first();
-        if (! $currentRate) {
-            return back()->withInput()->withErrors(['error' => 'No hay una tasa de cambio activa para procesar la venta.']);
+        return response()->json(['success' => true, 'client' => $client]);
+    }
+
+    // ==========================================
+    // PROCESAMIENTO DE LA VENTA
+    // ==========================================
+    public function store(Request $request)
+    {
+        // El request vendrá como JSON desde Alpine
+        $data = $request->validate([
+            'client_id' => 'required|exists:clients,id',
+            'cart' => 'required|array|min:1',
+            'payments' => 'nullable|array',
+            'exchange_rate' => 'required|numeric',
+        ]);
+
+        $total_order = collect($data['cart'])->sum('subtotal');
+        $amount_received = collect($data['payments'] ?? [])->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+        $amount_pending = round($total_order - $amount_received, 2);
+
+        // Determinar estado
+        $payment_status = 'pending';
+        if ($amount_received >= $total_order) {
+            $payment_status = 'paid';
+        } elseif ($amount_received > 0) {
+            $payment_status = 'partial';
         }
 
         try {
             DB::beginTransaction();
 
-            // 1. Crear la Cabecera de la Orden
-            // Generamos un número de orden único (Ej: ORD-202605-001)
             $orderNumber = 'ORD-'.date('Ym').'-'.str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
 
+            // 1. Crear Orden
             $order = Order::create([
                 'uuid' => Str::uuid(),
-                'client_id' => $request->client_id,
-                'user_id' => auth()->id(), // El cajero/admin que hizo la venta
+                'client_id' => $data['client_id'],
+                'verified_by' => auth()->id(),
                 'order_number' => $orderNumber,
-                'subtotal' => 0,
-                'tax' => 0,
-                'total' => 0,
-                'exchange_rate' => $currentRate->rate,
-                'status' => 'completed', // O 'pending' si es un apartado
-                'payment_status' => 'pending', // Faltaría pasarlo por caja
-                'notes' => $request->notes,
+                'order_type' => 'store_pickup',
+                'payment_status' => $payment_status,
+                'verification_status' => 'verified',
+                'status' => 'completed',
+                'subtotal' => $total_order,
+                'exchange_rate' => $data['exchange_rate'],
+                'total' => $total_order,
+                'notes' => 'Tasa de cambio: Bs. '.$data['exchange_rate'],
             ]);
 
-            $calculatedTotal = 0;
-
-            // 2. Procesar cada ítem y descontar inventario
-            foreach ($request->items as $item) {
-                $bulk = Bulk::find($item['bulk_id']);
+            // 2. Insertar Detalles y Descontar Inventario
+            foreach ($data['cart'] as $item) {
+                $baseQty = $item['quantity'] * $item['conversion_factor'];
                 $product = Product::with('inventory')->find($item['product_id']);
 
-                // Calculamos cuántas unidades base se están vendiendo (Ej: 2 Kilos = 2000 gramos)
-                $baseQuantityToDeduct = $item['quantity'] * $bulk->quantity;
-
-                // VALIDACIÓN CRÍTICA: ¿Hay suficiente stock?
-                if (! $product->allow_negative_stock && $product->inventory->stock < $baseQuantityToDeduct) {
-                    throw new \Exception("Stock insuficiente para el producto: {$product->name}. Requerido: {$baseQuantityToDeduct}, Disponible: {$product->inventory->stock}");
+                if (! $item['allow_negative'] && $product->inventory->stock < $baseQty) {
+                    throw new \Exception("Stock insuficiente: {$item['name']}");
                 }
 
-                $subtotalItem = $item['quantity'] * $item['unit_price'];
-                $calculatedTotal += $subtotalItem;
-
-                // A. Guardar el detalle de la orden
                 $order->details()->create([
-                    'product_id' => $product->id,
-                    'bulk_id' => $bulk->id,
+                    'product_id' => $item['product_id'],
+                    'bulk_id' => $item['bulk_id'],
                     'quantity' => $item['quantity'],
-                    'base_quantity' => $baseQuantityToDeduct,
-                    'unit_price' => $item['unit_price'],
-                    'subtotal' => $subtotalItem,
+                    'base_quantity' => $baseQty,
+                    'unit_price' => $item['price'],
+                    'subtotal' => $item['subtotal'],
                 ]);
 
-                // B. Descontar del Inventario Físico
-                $product->inventory()->decrement('stock', $baseQuantityToDeduct);
+                $previousStock = $product->inventory->stock;
+
+                // Descuento Físico
+                $product->inventory()->decrement('stock', $baseQty);
+
+                // Auditoría de Movimiento
+                InventoryMovement::create([
+                    'product_id' => $product->id,
+                    'type' => 'sale',
+                    'reference_type' => get_class($order),
+                    'reference_id' => $order->id,
+                    'quantity' => $baseQty,
+                    'previous_stock' => $previousStock,
+                    'new_stock' => $previousStock - $baseQty,
+                    'created_by' => auth()->id(),
+                ]);
             }
 
-            // 3. Actualizar el Total Final
-            $order->update([
-                'subtotal' => $calculatedTotal,
-                'total' => $calculatedTotal,
-            ]);
+            // 3. Registrar Pagos Realizados
+            if (! empty($data['payments'])) {
+                foreach ($data['payments'] as $payment) {
+                    if ((float) $payment['amount'] > 0) {
+                        OrderPayment::create([
+                            'order_id' => $order->id,
+                            'payment_method_id' => $payment['payment_method_id'],
+                            'amount' => $payment['amount'],
+                            'reference' => $payment['reference'] ?? null,
+                            'payment_date' => now(),
+                            'status' => 'verified',
+                            'verified_by' => auth()->id(),
+                        ]);
+                    }
+                }
+            }
+
+            // 4. Si quedó debiendo (Fiado -> Cuentas por Cobrar)
+            if ($amount_pending > 0) {
+                AccountReceivable::create([
+                    'order_id' => $order->id,
+                    'client_id' => $data['client_id'],
+                    'total_amount' => $total_order,
+                    'paid_amount' => $amount_received,
+                    'pending_amount' => $amount_pending,
+                    'status' => $payment_status === 'partial' ? 'partial' : 'pending',
+                    'due_date' => now()->addDays(15),
+                ]);
+            }
 
             DB::commit();
 
-            // Redirigimos a la vista de la orden (o al listado) para proceder al pago
-            return redirect()->route('admin.orders.index')
-                ->with('success', "Orden {$orderNumber} generada exitosamente por un total de Bs. ".number_format($calculatedTotal, 2));
+            return response()->json([
+                'success' => true,
+                'message' => '¡Venta Procesada! Orden: '.$orderNumber,
+                'redirect' => route('admin.orders.index'), // O donde quieras mandarlo tras el éxito
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->withInput()->withErrors(['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
 }

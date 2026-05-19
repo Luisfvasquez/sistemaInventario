@@ -203,16 +203,7 @@
                                     <button type="button"
                                         @click="openEdit('payment_methods', @js($item))"
                                         class="text-blue-600 hover:text-blue-800 mr-2">Editar</button>
-                                    <form action="{{ url('/admin/payment_methods/' . $item->id) }}" method="POST"
-                                        class="inline-block m-0"
-                                        onsubmit="return confirm('¿Estás seguro de que deseas eliminar este método de pago?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                            class="text-red-600 hover:text-red-800 font-medium transition-colors flex items-center gap-1 inline-flex">
-                                            Eliminar
-                                        </button>
-                                    </form>
+
                                 </td>
                             </tr>
                         @endforeach
@@ -359,18 +350,21 @@
                         <template x-if="modalType === 'admins'">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label class="block text-sm text-gray-700">Nombre</label><input type="text"
-                                        name="name" x-model="formData.name"
+                                        required name="name" x-model="formData.name"
+                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
+                                <div><label class="block text-sm text-gray-700">Cedula/Dni</label><input type="text"
+                                        required name="dni" x-model="formData.dni"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
                                 <div><label class="block text-sm text-gray-700">Apellido</label><input type="text"
-                                        name="last_name" x-model="formData.last_name"
+                                        required name="last_name" x-model="formData.last_name"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Teléfono</label><input type="text"
-                                        name="phone_number" x-model="formData.phone_number"
+                                        required name="phone_number" x-model="formData.phone_number"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Correo (Email)</label><input
                                         type="email" name="email" x-model="formData.email"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
-                                <div class="col-span-1 md:col-span-2">
+                                <div class="col-span-1 md:col-span-1">
                                     <label class="block text-sm text-gray-700">Contraseña</label>
                                     <input type="password" name="password" x-model="formData.password"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
@@ -458,7 +452,7 @@
                         <template x-if="modalType === 'suppliers'">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label class="block text-sm text-gray-700">RIF</label><input type="text"
-                                        name="rif" x-model="formData.formData"
+                                        name="rif" x-model="formData.rif" readonly
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Razón Social / Nombre</label><input
                                         type="text" name="name" x-model="formData.name"
@@ -490,9 +484,23 @@
                         <div class="pt-6 mt-4 border-t border-gray-100 flex justify-end gap-3">
                             <button type="button" @click="showModal = false"
                                 class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium">Cancelar</button>
-                            <button type="submit"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">Guardar
-                                Cambios</button>
+                            <button type="submit" x-data="{ enviando: false }" @submit.window="enviando = true"
+                                :disabled="enviando"
+                                :class="enviando ? 'opacity-50 cursor-not-allowed bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'"
+                                class="px-4 py-2 text-white rounded-lg transition-colors font-medium flex items-center gap-2">
+
+                                <!-- Icono de carga opcional que aparece al enviar -->
+                                <svg x-show="enviando" class="animate-spin h-5 w-5 text-white" fill="none"
+                                    viewBox="0 0 24 24" style="display: none;">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+
+                                <span x-text="enviando ? 'Guardando...' : 'Guardar Cambios'"></span>
+                            </button>
                         </div>
                     </form>
                 </div>

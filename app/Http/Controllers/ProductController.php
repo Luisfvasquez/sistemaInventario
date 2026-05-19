@@ -64,13 +64,13 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:50',
             'sku' => $skuUniqueRule,
             'sku_barcode' => $skuBarcodeUniqueRule,
             'cost' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'unit_type' => 'required|in:unit,gram',
-            'brand' => 'nullable|string|max:255',
+            'brand' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'minimum_stock' => 'nullable|numeric|min:0',
             // Validamos el array de presentaciones adicionales (bultos, cajas) si vienen
@@ -278,13 +278,13 @@ class ProductController extends Controller
         // 2. Validación de los datos de entrada (con excepciones para el SKU del propio producto)
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:50',
             'sku' => 'nullable|string|unique:products,sku,'.$product->id,
             'sku_barcode' => 'nullable|string|unique:products,sku_barcode,'.$product->id,
             'cost' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'unit_type' => 'required|in:unit,gram',
-            'brand' => 'nullable|string|max:255',
+            'brand' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'minimum_stock' => 'required|numeric|min:0',
             'status' => 'required|in:active,inactive',

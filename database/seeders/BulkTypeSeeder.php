@@ -15,12 +15,12 @@ class BulkTypeSeeder extends Seeder
     {
         $types = [
             'Unidad',
-            'Bulto',
             'Caja',
             'Paquete',
             'Litro',
             'Kilo',
             'Gramo',
+            'Bulto',
         ];
 
         foreach ($types as $type) {

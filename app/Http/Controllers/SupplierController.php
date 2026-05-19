@@ -29,10 +29,10 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:50',
             'email' => 'required|email|unique:suppliers,email',
             'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:200',
         ]);
 
         try {
@@ -74,10 +74,10 @@ class SupplierController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:suppliers,email,'.$id,
+            'name' => 'required|string|max:50',
+            'email' => 'nullable|email|unique:suppliers,email,'.$id,
             'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:200',
         ]);
 
         $supplier = Supplier::findOrFail($id);

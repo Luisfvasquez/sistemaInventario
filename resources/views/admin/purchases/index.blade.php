@@ -253,7 +253,7 @@
                                                             <span class="text-2xl font-black">Bs.
                                                                 {{ number_format($purchase->total, 2) }}</span>
                                                             <span
-                                                                class="text-green-400 font-bold ml-2">(${{ number_format($purchase->total_usd, 2) }}
+                                                                class="text-green-400 font-bold ml-2">(${{ number_format($purchase->total / $purchase->exchange_rate, 2) }}
                                                                 USD)</span>
                                                         </div>
                                                         <button type="button" @click="openDetail = false"

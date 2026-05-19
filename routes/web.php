@@ -36,6 +36,12 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('purchases/create', [PurchaseController::class, 'create'])->name('admin.purchases.create');
         Route::post('purchases', [PurchaseController::class, 'store'])->name('admin.purchases.store');
         Route::resource('orders', OrderController::class)->names('admin.orders');
+
+        // Rutas API para el Punto de Venta (POS)
+        Route::get('pos/products/search', [OrderController::class, 'searchProduct'])->name('admin.pos.products.search');
+        Route::get('pos/clients/search', [OrderController::class, 'searchClient'])->name('admin.pos.clients.search');
+        Route::post('pos/clients/quick-store', [OrderController::class, 'storeClient'])->name('admin.pos.clients.store');
+
         Route::resource('payment_methods', PaymentMethodController::class)->only(['store', 'update', 'destroy'])->names('admin.payment_methods');
     });
 
