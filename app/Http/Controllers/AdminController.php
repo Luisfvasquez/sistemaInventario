@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\Order;
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Supplier;
@@ -29,13 +30,13 @@ class AdminController extends Controller
     public function index()
     {
         $admins = User::all();
-        $clients = Client::all();
+        $payment_methods = PaymentMethod::all();
         $categories = Category::all();
         $suppliers = Supplier::all();
 
         return view('admin.index', [
             'admins' => $admins,
-            'clients' => $clients,
+            'payment_methods' => $payment_methods,
             'categories' => $categories,
             'suppliers' => $suppliers,
         ]);

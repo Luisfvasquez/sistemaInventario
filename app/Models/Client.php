@@ -17,6 +17,7 @@ class Client extends Model implements Auditable
         'last_name',
         'phone_number',
         'email',
+        'user_id',
         'identification',
         'address',
         'is_active',
@@ -29,5 +30,10 @@ class Client extends Model implements Auditable
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

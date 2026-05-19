@@ -68,4 +68,9 @@ class User extends Authenticatable implements Auditable
     {
         return $this->hasMany(InventoryMovement::class, 'created_by');
     }
+
+    public function client()
+    {
+        return $this->hasOne(Client::class);
+    }
 }

@@ -4,6 +4,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
@@ -33,10 +35,15 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('purchases/index', [PurchaseController::class, 'index'])->name('admin.purchases.index');
         Route::get('purchases/create', [PurchaseController::class, 'create'])->name('admin.purchases.create');
         Route::post('purchases', [PurchaseController::class, 'store'])->name('admin.purchases.store');
-        Route::resource('orders', InventoryController::class)->names('admin.orders');
+        Route::resource('orders', OrderController::class)->names('admin.orders');
+        Route::resource('payment_methods', PaymentMethodController::class)->only(['store', 'update', 'destroy'])->names('admin.payment_methods');
     });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/client/dashboard', function () {
+        return view('client.dashboard');
+    })->name('client.dashboard');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

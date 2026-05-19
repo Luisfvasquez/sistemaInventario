@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('uuid')
                 ->unique();
 
-            $table->string('name');
+            $table->string('name')->nullable();
 
             $table->string('last_name')
                 ->nullable();
@@ -34,7 +34,6 @@ return new class extends Migration
             CI / RIF
             */
             $table->string('identification')
-                ->nullable()
                 ->index();
 
             $table->text('address')
