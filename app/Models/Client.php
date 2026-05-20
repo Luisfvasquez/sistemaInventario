@@ -32,6 +32,11 @@ class Client extends Model implements Auditable
         return $this->hasMany(Order::class);
     }
 
+    public function accountsReceivable()
+    {
+        return $this->hasMany(AccountReceivable::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
