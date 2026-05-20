@@ -140,12 +140,21 @@
             {{-- Caja Pagos (Múltiples) --}}
             <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-emerald-500">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-gray-700 uppercase">Pagos Recibidos</h3>
-                    <button @click.prevent="addPaymentLine"
-                        class="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300 font-bold">+ Dividir</button>
+                    <div class="flex items-center space-x-2">
+                        <h3 class="text-sm font-bold text-gray-700 uppercase">Pagos Recibidos</h3>
+                        <label class="inline-flex items-center text-xs font-bold ml-3">
+                            <input type="checkbox" class="form-checkbox h-4 w-4" x-model="isCreditSale" @change="toggleCreditSale">
+                            <span class="ml-2">Vender a Fiado</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center">
+                        <button x-show="!isCreditSale" @click.prevent="addPaymentLine"
+                            class="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300 font-bold">+ Dividir</button>
+                        <span x-show="isCreditSale" class="text-xs text-yellow-300 font-bold ml-2">Fiado activo</span>
+                    </div>
                 </div>
 
-                <div class="space-y-3">
+                <div class="space-y-3" x-show="!isCreditSale" style="display: none;">
                     <template x-for="(payment, index) in payments" :key="index">
                         <div class="bg-gray-50 p-3 rounded-lg border relative">
                             <button x-show="payments.length > 1" @click.prevent="removePaymentLine(index)"
@@ -239,6 +248,9 @@
                 clientName: '',
                 clientSearched: false,
 
+                // Modalidad de venta
+                isCreditSale: false,
+
                 // Buscador Productos
                 searchQuery: '',
                 searchResults: [],
@@ -251,7 +263,7 @@
                 amountPending: 0,
 
                 init() {
-                    if (this.availablePaymentMethods.length > 0) {
+                    if (!this.isCreditSale && this.availablePaymentMethods.length > 0) {
                         this.addPaymentLine();
                     }
                 },
@@ -370,6 +382,7 @@
                 },
 
                 addPaymentLine() {
+                    if (this.isCreditSale) return;
                     // Calcular lo que ya está cubierto por las líneas actuales
                     let alreadyAssigned = this.payments.reduce((sum, p) => sum + (parseFloat(p
                         .amount) || 0), 0);
@@ -393,6 +406,21 @@
                     this.payments.splice(index, 1);
                     this.redistributeRemainder();
                     this.updateTotals();
+                },
+
+                toggleCreditSale() {
+                    if (this.isCreditSale) {
+                        // activar fiado: limpiar pagos y recalcular
+                        this.payments = [];
+                        this.amountReceived = 0;
+                        this.amountPending = parseFloat((this.totalOrder - this.amountReceived).toFixed(2));
+                    } else {
+                        // desactivar fiado: asegurar al menos una línea de pago
+                        if (this.payments.length === 0 && this.availablePaymentMethods.length > 0) {
+                            this.addPaymentLine();
+                        }
+                        this.updateTotals();
+                    }
                 },
 
                 // Asigna el monto restante automáticamente al último método de pago
