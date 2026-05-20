@@ -128,6 +128,10 @@
 
                                 {{-- Acciones --}}
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
+                                    <a href="{{ route('admin.clients.show', $client->id) }}"
+                                        class="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded-md transition-colors">
+                                        Historial
+                                    </a>
                                     <button @click="showDetails(@js(['name' => $client->name, 'identification' => $client->identification, 'phone' => $client->phone, 'email' => $client->email ?? '', 'address' => $client->address, 'has_account' => (bool) $client->user_id, 'account_email' => $client->user?->email ?? ($client->email ?? '')]))"
                                         class="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md transition-colors">
                                         Ficha

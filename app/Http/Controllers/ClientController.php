@@ -94,7 +94,13 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $client = Client::with([
+            'orders.details',
+            'orders.payments',
+            'accountsReceivable.installments'
+        ])->findOrFail($id);
+
+        return view('admin.clients.show', compact('client'));
     }
 
     /**
