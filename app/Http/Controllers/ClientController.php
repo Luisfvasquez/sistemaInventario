@@ -241,6 +241,8 @@ class ClientController extends Controller
             // 5. Actualizar estado de pago en la Orden
             if ($account->status === 'paid') {
                 $order->payment_status = 'paid';
+                $order->verification_status = 'verified'; // Si la deuda se salda completamente, marcamos la orden como verificada
+                $order->status = 'completed'; // Si la deuda se salda completamente, marcamos la orden como verificada
             } else {
                 $order->payment_status = 'partial';
             }

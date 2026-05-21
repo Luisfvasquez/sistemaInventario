@@ -31,14 +31,15 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:50'],
+            'cedula' => ['required', 'string', 'max:20', 'unique:'.User::class.',dni'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $request->name,
-            'dni' => 'CI-' . rand(10000000, 99999999),
+            'dni' => $request->cedula,
             'last_name' => '',
             'phone_number' => '',
             'email' => $request->email,
@@ -58,7 +59,7 @@ class RegisteredUserController extends Controller
             'user_id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'identification' => 'CI-' . rand(10000000, 30000000),
+            'identification' => 'CI-' . $request->cedula,
             'phone_number' => '',
             'address' => '',
             'is_active' => true,

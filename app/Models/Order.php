@@ -61,4 +61,10 @@ class Order extends Model implements Auditable
     {
         return $this->hasMany(OrderPayment::class);
     }
+
+    public function paymentProofs()
+    {
+        return $this->hasMany(PaymentProof::class);
+    }
+    
 }

@@ -45,6 +45,7 @@ return new class extends Migration
             Pickup o delivery
             */
             $table->enum('order_type', [
+                'store',
                 'store_pickup',
                 'delivery',
             ])->default('store_pickup');

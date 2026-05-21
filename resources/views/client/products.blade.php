@@ -425,150 +425,15 @@
                         </div>
 
                         <!-- Botón de Checkout -->
-                        <button :disabled="cart.length === 0" @click="checkoutOpen = true"
-                            class="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-slate-100 disabled:to-slate-100 disabled:text-slate-400 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed">
-                            <span>Proceder a la Orden</span>
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                    d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                            </svg>
-                        </button>
+                        <a :href="cart.length > 0 ? '{{ route('client.checkout.view') }}' : '#'" :class="cart.length === 0 ? 'pointer-events-none from-slate-100 to-slate-100 text-slate-400' : 'from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white cursor-pointer shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98'" class="w-full bg-gradient-to-r font-extrabold py-3.5 px-4 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+                            <span>Proceder a Pagar</span>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- CAPA OSCURA MODAL DE CHECKOUT -->
-        <div x-cloak x-show="checkoutOpen"
-            class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300">
-            <div @click.away="checkoutOpen = false" x-show="checkoutOpen" x-transition.scale.95
-                class="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col justify-between">
-
-                <!-- Cabecera del Modal -->
-                <div class="px-6 py-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                    <div class="flex items-center gap-2.5">
-                        <div
-                            class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
-                            <svg class="w-5.5 h-5.5 text-indigo-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="font-extrabold text-slate-800 text-base">Registrar Orden de Compra</h3>
-                            <p class="text-slate-400 text-xxs font-medium">Completa los detalles de despacho para
-                                asentar tu orden</p>
-                        </div>
-                    </div>
-
-                    <button @click="checkoutOpen = false"
-                        class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Formulario de Checkout -->
-                <form action="{{ route('client.checkout') }}" method="POST" class="p-6 space-y-6">
-                    @csrf
-
-                    <!-- Campo Oculto para la data del carrito -->
-                    <input type="hidden" name="cart_items" :value="JSON.stringify(prepareCartForSubmit())" />
-
-                    <!-- Dirección de Despacho -->
-                    <div class="space-y-2">
-                        <label class="block text-slate-700 font-extrabold text-xs uppercase tracking-wider">Dirección
-                            de Entrega</label>
-                        <textarea name="delivery_address" rows="3" required
-                            placeholder="Ingresa la dirección detallada para el envío..."
-                            class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all outline-none">{{ old('delivery_address', $client->address) }}</textarea>
-                    </div>
-
-                    <!-- Notas Adicionales -->
-                    <div class="space-y-2">
-                        <label class="block text-slate-700 font-extrabold text-xs uppercase tracking-wider">Notas
-                            Especiales / Observaciones (Opcional)</label>
-                        <textarea name="notes" rows="2"
-                            placeholder="Indicaciones para el despacho, método de pago a reportar, etc..."
-                            class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all outline-none">{{ old('notes') }}</textarea>
-                    </div>
-
-                    <!-- Detalle de Productos a Comprar -->
-                    <div class="space-y-2">
-                        <label class="block text-slate-700 font-extrabold text-xs uppercase tracking-wider">Productos a
-                            Comprar</label>
-                        <div class="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
-                            <div class="max-h-40 overflow-y-auto divide-y divide-slate-100 pr-1">
-                                <template x-for="item in cart" :key="item.id">
-                                    <div
-                                        class="flex items-center justify-between p-3 text-xs hover:bg-slate-100/50 transition-colors">
-                                        <div class="min-w-0 flex-1 pr-2">
-                                            <span x-text="item.name"
-                                                class="font-bold text-slate-800 block truncate"></span>
-                                            <span class="text-slate-400 text-xxs font-bold">
-                                                <span x-text="formatQuantity(item)"></span>
-                                                x
-                                                <span x-text="formatCurrency(item.display_price)"></span>
-                                            </span>
-                                        </div>
-                                        <div class="text-right shrink-0">
-                                            <span
-                                                x-text="formatCurrency(calculateItemTotal(item) / {{ $safeRate }})"
-                                                class="font-extrabold text-slate-800 block"></span>
-                                            @if ($exchangeRate)
-                                                <span x-text="formatCurrency(calculateItemTotal(item), ' BS')"
-                                                    class="text-indigo-600 font-bold text-xxs block"></span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tabla Resumen Corta -->
-                    <div
-                        class="bg-indigo-50/50 border border-indigo-100/50 rounded-2xl p-5 space-y-2.5 text-xs text-indigo-900">
-                        <div class="flex justify-between items-center">
-                            <span class="font-semibold text-indigo-700">Cantidad de Ítems</span>
-                            <span x-text="totalItemsCount()" class="font-extrabold"></span>
-                        </div>
-                        <div class="flex justify-between items-center border-t border-indigo-100/50 pt-2.5 text-sm">
-                            <span class="font-extrabold text-slate-700">Total de la Orden</span>
-                            <div class="text-right">
-                                <span x-text="formatCurrency(calculateTotal() / {{ $safeRate }})"
-                                    class="font-black text-slate-900 text-base"></span>
-                                @if ($exchangeRate)
-                                    <span x-text="formatCurrency(calculateTotal(), ' BS')"
-                                        class="font-bold text-indigo-700 text-xs block"></span>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Acciones del Formulario -->
-                    <div class="flex items-center gap-3 pt-4 border-t border-slate-100">
-                        <button type="button" @click="checkoutOpen = false"
-                            class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-xl text-xs transition-colors">
-                            Cancelar
-                        </button>
-                        <button type="submit"
-                            class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg shadow-emerald-500/15 transition-all duration-300 flex items-center justify-center gap-1.5 text-xs">
-                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Confirmar Pedido
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
+      
     </div>
 
     <!-- Script de Alpine.js para controlar el Carrito de Compras -->
