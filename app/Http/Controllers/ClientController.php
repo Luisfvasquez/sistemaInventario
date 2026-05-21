@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\User;
+use App\Models\AccountReceivable;
+use App\Models\OrderPayment;
+use App\Models\PaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -12,8 +15,8 @@ class ClientController extends Controller
 {
     public function index()
     {
-        // Cargamos la relación user para saber quién tiene acceso web directo desde el listado
-        $clients = Client::with('user')->get();
+        // Cargamos la relación user y deudas para comprobar deudas rápidamente desde el listado
+        $clients = Client::with(['user', 'accountsReceivable'])->get();
 
         return view('admin.clients.index', compact('clients'));
     }
@@ -95,12 +98,15 @@ class ClientController extends Controller
     public function show(string $id)
     {
         $client = Client::with([
-            'orders.details',
-            'orders.payments',
+            'orders.details.product',
+            'orders.details.bulk',
+            'orders.payments.paymentMethod',
             'accountsReceivable.installments'
         ])->findOrFail($id);
 
-        return view('admin.clients.show', compact('client'));
+        $paymentMethods = PaymentMethod::where('is_active', true)->get();
+
+        return view('admin.clients.show', compact('client', 'paymentMethods'));
     }
 
     /**
@@ -147,5 +153,133 @@ class ClientController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    /**
+     * Registrar un abono a una cuenta por cobrar de un cliente.
+     */
+    public function registerAbono(Request $request, string $clientId)
+    {
+        $validated = $request->validate([
+            'account_receivable_id' => 'required|exists:accounts_receivable,id',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method_id' => 'required|exists:payment_methods,id',
+            'reference' => 'nullable|string|max:100',
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $client = Client::findOrFail($clientId);
+        $account = AccountReceivable::where('client_id', $client->id)
+            ->findOrFail($validated['account_receivable_id']);
+
+        $paymentMethod = PaymentMethod::findOrFail($validated['payment_method_id']);
+        $isTransferenciaOrPagoMovil = in_array($paymentMethod->id, [6, 7]) 
+            || str_contains(strtolower($paymentMethod->name), 'transferencia') 
+            || str_contains(strtolower($paymentMethod->name), 'pago móvil') 
+            || str_contains(strtolower($paymentMethod->name), 'pago movil');
+
+        if (($paymentMethod->requires_reference || $isTransferenciaOrPagoMovil) && empty($validated['reference'])) {
+            return back()->withInput()->withErrors([
+                'error' => 'La referencia es obligatoria para el método de pago seleccionado: ' . $paymentMethod->name
+            ]);
+        }
+
+        if ($validated['amount'] > $account->pending_amount) {
+            return back()->withInput()->withErrors([
+                'error' => 'El monto del abono no puede superar el saldo pendiente de la deuda (' . number_format($account->pending_amount, 2, ',', '.') . ').'
+            ]);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Obtener número de cuota
+            $installmentNumber = $account->installments()->count() + 1;
+
+            // 2. Registrar la cuota de abono
+            $account->installments()->create([
+                'installment_number' => $installmentNumber,
+                'amount' => $validated['amount'],
+                'paid_amount' => $validated['amount'],
+                'pending_amount' => 0.00,
+                'due_date' => $validated['payment_date'],
+                'paid_at' => $validated['payment_date'],
+                'status' => 'paid',
+                'notes' => $validated['notes'],
+            ]);
+
+            // 3. Registrar el pago en el historial de la Orden
+            $order = $account->order;
+            $paymentNotes = "Abono #" . $installmentNumber . " a cuenta por cobrar.";
+            if (!empty($validated['notes'])) {
+                $paymentNotes .= " Observaciones: " . $validated['notes'];
+            }
+
+            OrderPayment::create([
+                'order_id' => $order->id,
+                'payment_method_id' => $validated['payment_method_id'],
+                'amount' => $validated['amount'],
+                'reference' => $validated['reference'],
+                'payment_date' => $validated['payment_date'],
+                'status' => 'verified',
+                'verified_by' => auth()->id(),
+                'notes' => $paymentNotes,
+            ]);
+
+            // 4. Actualizar saldos en AccountReceivable
+            $account->paid_amount += $validated['amount'];
+            $account->pending_amount -= $validated['amount'];
+
+            if ($account->pending_amount <= 0) {
+                $account->status = 'paid';
+            } else {
+                $account->status = 'partial';
+            }
+            $account->save();
+
+            // 5. Actualizar estado de pago en la Orden
+            if ($account->status === 'paid') {
+                $order->payment_status = 'paid';
+            } else {
+                $order->payment_status = 'partial';
+            }
+            $order->save();
+
+            DB::commit();
+
+            return redirect()->route('admin.clients.show', $client->id)
+                ->with('success', 'Abono registrado correctamente de ' . number_format($validated['amount'], 2, ',', '.') . '.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return back()->withInput()->withErrors([
+                'error' => 'Hubo un error al registrar el abono: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Actualizar el estado de verificación de un pedido.
+     */
+    public function updateOrderVerification(Request $request, string $orderId)
+    {
+        $validated = $request->validate([
+            'verification_status' => 'required|in:verified',
+        ]);
+
+        $order = \App\Models\Order::findOrFail($orderId);
+        
+        if ($order->verification_status !== 'pending') {
+            return redirect()->back()->with('error', 'El estado de verificación del pedido ya no se encuentra pendiente.');
+        }
+
+        $order->verification_status = 'verified';
+        $order->verified_at = now();
+        $order->verified_by = auth()->id();
+        $order->save();
+
+        return redirect()->back()->with('success', 'Estado de verificación del pedido ' . $order->order_number . ' actualizado a Verificado.');
     }
 }

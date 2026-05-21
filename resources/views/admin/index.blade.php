@@ -350,19 +350,19 @@
                         <template x-if="modalType === 'admins'">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label class="block text-sm text-gray-700">Nombre</label><input type="text"
-                                        required name="name" x-model="formData.name"
+                                        required name="name" x-model="formData.name" maxlength="25"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
                                 <div><label class="block text-sm text-gray-700">Cedula/Dni</label><input type="text"
-                                        required name="dni" x-model="formData.dni"
+                                        required name="dni" x-model="formData.dni" maxlength="12"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
                                 <div><label class="block text-sm text-gray-700">Apellido</label><input type="text"
-                                        required name="last_name" x-model="formData.last_name"
+                                        required name="last_name" x-model="formData.last_name" maxlength="50"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Teléfono</label><input type="text"
-                                        required name="phone_number" x-model="formData.phone_number"
+                                        required name="phone_number" x-model="formData.phone_number" maxlength="15"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Correo (Email)</label><input
-                                        type="email" name="email" x-model="formData.email"
+                                        type="email" name="email" x-model="formData.email" maxlength="25"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
                                 <div class="col-span-1 md:col-span-1">
                                     <label class="block text-sm text-gray-700">Contraseña</label>
@@ -386,13 +386,13 @@
                                 <div>
                                     <label class="block text-sm text-gray-700">Nombre del Método (Ej. Zelle, Pago Móvil,
                                         Efectivo)</label>
-                                    <input type="text" name="name" x-model="formData.name"
+                                    <input type="text" name="name" x-model="formData.name" maxlength="25"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
                                 </div>
                                 <div>
                                     <label class="block text-sm text-gray-700">Descripción (Opcional - Instrucciones para
                                         el cliente)</label>
-                                    <textarea name="description" rows="3" x-model="formData.description"
+                                    <textarea name="description" rows="3" x-model="formData.description" maxlength="100"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></textarea>
                                 </div>
 
@@ -430,13 +430,13 @@
                         <template x-if="modalType === 'categories'">
                             <div class="grid grid-cols-1 gap-4">
                                 <div><label class="block text-sm text-gray-700">Nombre de Categoría</label><input
-                                        type="text" name="name" x-model="formData.name"
+                                        type="text" name="name" x-model="formData.name" maxlength="25"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
                                 <div><label class="block text-sm text-gray-700">Slug (URL amigable)</label><input
                                         type="text" name="slug" x-model="formData.slug"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Descripción</label>
-                                    <textarea name="description" rows="3" x-model="formData.description"
+                                    <textarea name="description" rows="3" x-model="formData.description" maxlength="100"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></textarea>
                                 </div>
                                 <div class="flex items-center mt-2">
@@ -452,23 +452,23 @@
                         <template x-if="modalType === 'suppliers'">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label class="block text-sm text-gray-700">RIF</label><input type="text"
-                                        name="rif" x-model="formData.rif" readonly
+                                        name="rif" x-model="formData.rif" :readonly="modalTitle === 'Editar Registro' ? true : false"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Razón Social / Nombre</label><input
-                                        type="text" name="name" x-model="formData.name"
+                                        type="text" name="name" x-model="formData.name" maxlength="25"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
                                 <div><label class="block text-sm text-gray-700">Persona de Contacto</label><input
-                                        type="text" name="contact_person" x-model="formData.contact_person"
+                                        type="text" name="contact_person" x-model="formData.contact_person" maxlength="50"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Teléfono</label><input type="text"
-                                        name="phone_number" x-model="formData.phone_number"
+                                        name="phone_number" x-model="formData.phone_number" maxlength="15"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div class="col-span-1 md:col-span-2"><label class="block text-sm text-gray-700">Correo
-                                        Electrónico</label><input type="email" name="email" x-model="formData.email"
+                                        Electrónico</label><input type="email" name="email" x-model="formData.email" maxlength="25"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div class="col-span-1 md:col-span-2"><label
                                         class="block text-sm text-gray-700">Dirección</label>
-                                    <textarea name="address" rows="2" x-model="formData.address"
+                                    <textarea name="address" rows="2" x-model="formData.address" maxlength="100"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></textarea>
                                 </div>
                                 <div class="flex items-center mt-2 col-span-1 md:col-span-2">

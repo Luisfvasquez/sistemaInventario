@@ -21,6 +21,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        View::share('exchangeRate', Cache::get('usd_exchange_rate'));
+        View::share('exchangeRate', Cache::get('exchange_rate'));
     }
 }

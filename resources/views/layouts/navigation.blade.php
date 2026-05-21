@@ -26,6 +26,15 @@
                         <x-nav-link :href="route('client.dashboard')" :active="request()->routeIs('client.dashboard')">
                             {{ __('Mi Panel') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('client.products')" :active="request()->routeIs('client.products')">
+                            {{ __('Tienda / Catálogo') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('client.purchases')" :active="request()->routeIs('client.purchases')">
+                            {{ __('Mis Compras') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('client.invoices')" :active="request()->routeIs('client.invoices')">
+                            {{ __('Mis Facturas') }}
+                        </x-nav-link>
                     @endif
                 </div>
             </div>
@@ -46,9 +55,15 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
-                        </x-dropdown-link>
+                        @if(Auth::user()->hasRole('client'))
+                            <x-dropdown-link :href="route('client.profile')">
+                                {{ __('Mi Perfil') }}
+                            </x-dropdown-link>
+                        @else
+                            <x-dropdown-link :href="route('profile.edit')">
+                                {{ __('Profile') }}
+                            </x-dropdown-link>
+                        @endif
 
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
@@ -56,6 +71,7 @@
 
                             <x-dropdown-link :href="route('logout')"
                                     onclick="event.preventDefault();
+                                                localStorage.removeItem('client_shopping_cart');
                                                 this.closest('form').submit();">
                                 {{ __('Log Out') }}
                             </x-dropdown-link>
@@ -87,6 +103,15 @@
                 <x-responsive-nav-link :href="route('client.dashboard')" :active="request()->routeIs('client.dashboard')">
                     {{ __('Mi Panel') }}
                 </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('client.products')" :active="request()->routeIs('client.products')">
+                    {{ __('Tienda / Catálogo') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('client.purchases')" :active="request()->routeIs('client.purchases')">
+                    {{ __('Mis Compras') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('client.invoices')" :active="request()->routeIs('client.invoices')">
+                    {{ __('Mis Facturas') }}
+                </x-responsive-nav-link>
             @endif
         </div>
 
@@ -98,9 +123,15 @@
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')">
-                    {{ __('Profile') }}
-                </x-responsive-nav-link>
+                @if(Auth::user()->hasRole('client'))
+                    <x-responsive-nav-link :href="route('client.profile')">
+                        {{ __('Mi Perfil') }}
+                    </x-responsive-nav-link>
+                @else
+                    <x-responsive-nav-link :href="route('profile.edit')">
+                        {{ __('Profile') }}
+                    </x-responsive-nav-link>
+                @endif
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">
@@ -108,6 +139,7 @@
 
                     <x-responsive-nav-link :href="route('logout')"
                             onclick="event.preventDefault();
+                                        localStorage.removeItem('client_shopping_cart');
                                         this.closest('form').submit();">
                         {{ __('Log Out') }}
                     </x-responsive-nav-link>

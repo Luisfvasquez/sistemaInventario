@@ -15,6 +15,7 @@ class Client extends Model implements Auditable
         'uuid',
         'name',
         'last_name',
+        'phone',
         'phone_number',
         'email',
         'user_id',
@@ -26,6 +27,16 @@ class Client extends Model implements Auditable
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function getPhoneAttribute()
+    {
+        return $this->phone_number;
+    }
+
+    public function setPhoneAttribute($value)
+    {
+        $this->attributes['phone_number'] = $value;
+    }
 
     public function orders()
     {

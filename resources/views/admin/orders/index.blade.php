@@ -83,7 +83,7 @@
                                                     @foreach ($order->details as $detail)
                                                         <div class="flex justify-between">
                                                             <span>{{ $detail->quantity }}x {{ $detail->product->name }}
-                                                                ({{ $detail->bulk->name }})</span>
+                                                                ({{ $detail->bulk?->name ?? 'Unidad' }})</span>
                                                             <span class="font-bold">Bs.
                                                                 {{ number_format($detail->subtotal, 2) }}</span>
                                                         </div>

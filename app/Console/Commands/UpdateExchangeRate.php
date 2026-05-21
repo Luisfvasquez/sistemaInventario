@@ -48,7 +48,7 @@ class UpdateExchangeRate extends Command
                         ]);
 
                         // 3. Guardar en Caché permanentemente (hasta que este comando lo vuelva a sobreescribir)
-                        Cache::forever('usd_exchange_rate', $newRate->rate);
+                        Cache::forever('exchange_rate', $newRate->rate);
                     });
 
                     $this->info("¡Éxito! Tasa actualizada y en caché: {$rate} Bs/USD");

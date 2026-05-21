@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ClientPanelController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentMethodController;
@@ -12,9 +13,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+Route::get('/', [ClientPanelController::class, 'storefront'])->name('storefront');
 
 Route::middleware(['auth', 'role:admin'])
     ->prefix('admin')
@@ -26,6 +25,10 @@ Route::middleware(['auth', 'role:admin'])
         Route::delete('products/{id}/image', [ProductController::class, 'destroyImage'])->name('admin.products.destroyImage');
         Route::get('forzar-actualizacion-dolar', [ProductController::class, 'forzarActualizacionDolar'])->name('admin.products.forzarActualizacionDolar');
         Route::resource('clients', ClientController::class)->names('admin.clients');
+        Route::post('clients/{client}/abonos', [ClientController::class, 'registerAbono'])
+            ->name('admin.clients.registerAbono');
+        Route::patch('orders/{order}/verification', [ClientController::class, 'updateOrderVerification'])
+            ->name('admin.orders.updateVerification');
         Route::resource('admins', AdminController::class)->names('admin.admins');
         Route::resource('categories', CategoryController::class)->names('admin.categories');
         Route::post('categories/quick-store', [CategoryController::class, 'quickStore'])
@@ -46,13 +49,22 @@ Route::middleware(['auth', 'role:admin'])
     });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/client/dashboard', function () {
-        return view('client.dashboard');
-    })->name('client.dashboard');
-
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Rutas exclusivas del panel de cliente
+Route::middleware(['auth', 'role:client'])
+    ->prefix('client')
+    ->group(function () {
+        Route::get('/dashboard', [ClientPanelController::class, 'dashboard'])->name('client.dashboard');
+        Route::get('/productos', [ClientPanelController::class, 'products'])->name('client.products');
+        Route::post('/checkout', [ClientPanelController::class, 'checkout'])->name('client.checkout');
+        Route::get('/compras', [ClientPanelController::class, 'purchases'])->name('client.purchases');
+        Route::get('/facturas', [ClientPanelController::class, 'invoices'])->name('client.invoices');
+        Route::get('/perfil', [ClientPanelController::class, 'profile'])->name('client.profile');
+        Route::patch('/perfil', [ClientPanelController::class, 'profileUpdate'])->name('client.profile.update');
+    });
 
 require __DIR__.'/auth.php';

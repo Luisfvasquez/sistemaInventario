@@ -38,18 +38,40 @@ class RegisteredUserController extends Controller
 
         $user = User::create([
             'name' => $request->name,
+            'dni' => 'CI-' . rand(10000000, 99999999),
+            'last_name' => '',
+            'phone_number' => '',
             'email' => $request->email,
             'password' => Hash::make($request->password),
+        ]);
+
+        // Asignar rol de cliente por defecto (asegurando que exista para compatibilidad y entornos de test)
+        $roleName = 'client';
+        if (!\Spatie\Permission\Models\Role::where('name', $roleName)->exists()) {
+            \Spatie\Permission\Models\Role::create(['name' => $roleName]);
+        }
+        $user->assignRole($roleName);
+
+        // Crear perfil de cliente asociado
+        \App\Models\Client::create([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'identification' => 'CI-' . rand(10000000, 30000000),
+            'phone_number' => '',
+            'address' => '',
+            'is_active' => true,
         ]);
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        if (Auth::user()->hasRole('admin')) {
-            return redirect(route('dashboard', absolute: false));
+        if ($user->hasRole('client')) {
+            return redirect(route('client.dashboard', absolute: false));
         }
 
-        return redirect(route('client.dashboard', absolute: false));
+        return redirect(route('dashboard', absolute: false));
     }
 }

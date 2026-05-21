@@ -39,6 +39,12 @@ class Product extends Model implements Auditable
         'has_variants' => 'boolean',
     ];
 
+    // Atributos adicionales para mostrar en vistas
+    protected $appends = [
+        'display_price',
+        'unit_label',
+    ];
+
     public function getTotalUsdAttribute()
     {
         if ($this->exchange_rate && $this->exchange_rate > 0) {
