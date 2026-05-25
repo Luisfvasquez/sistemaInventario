@@ -30,9 +30,9 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:50',
-            'slug' => 'required|string|max:50|unique:categories,slug',
-            'description' => 'nullable|string',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
+            'slug' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/', 'unique:categories,slug'],
+            'description' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
         ]);
 
         try {
@@ -52,7 +52,7 @@ class CategoryController extends Controller
     {
         // Validamos que el nombre no venga vacío y no exista ya
         $request->validate([
-            'name' => 'required|string|max:50|unique:categories,name',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/', 'unique:categories,name'],
         ]);
 
         // Creamos la categoría
@@ -91,9 +91,9 @@ class CategoryController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'name' => 'required|string|max:50',
-            'slug' => 'required|string|max:50|unique:categories,slug,'.$id,
-            'description' => 'nullable|string',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
+            'slug' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/', 'unique:categories,slug,'.$id],
+            'description' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
         ]);
 
         $category = Category::findOrFail($id);

@@ -176,6 +176,11 @@
                     </tbody>
                 </table>
             </div>
+             @if ($inventories->hasPages())
+                    <div class="px-6 py-4">
+                        {{ $inventories->links() }}
+                    </div>
+                @endif
         </div>
     </div>
 @endsection

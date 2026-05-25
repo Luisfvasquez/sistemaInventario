@@ -154,6 +154,11 @@
                         @endforeach
                     </tbody>
                 </table>
+                 @if ($admins->hasPages())
+                    <div class="px-6 py-4">
+                        {{ $admins->links() }}
+                    </div>
+                @endif
             </div>
 
             {{-- Tabla Métodos de Pago --}}
@@ -163,7 +168,7 @@
                         <tr>
                             <th class="px-6 py-4 font-semibold">Método</th>
                             <th class="px-6 py-4 font-semibold">Ref. Requerida</th>
-                            <th class="px-6 py-4 font-semibold">Mostrar en Checkout</th>
+                            <th class="px-6 py-4 font-semibold">Mostrar al cliente</th>
                             <th class="px-6 py-4 font-semibold">Estado</th>
                             <th class="px-6 py-4 font-semibold text-right">Acciones</th>
                         </tr>
@@ -209,6 +214,11 @@
                         @endforeach
                     </tbody>
                 </table>
+                 @if ($payment_methods->hasPages())
+                    <div class="px-6 py-4">
+                        {{ $payment_methods->links() }}
+                    </div>
+                @endif
             </div>
 
             {{-- Tabla Categorías --}}
@@ -248,6 +258,11 @@
                         @endforeach
                     </tbody>
                 </table>
+                 @if ($categories->hasPages())
+                    <div class="px-6 py-4">
+                        {{ $categories->links() }}
+                    </div>
+                @endif
             </div>
 
             {{-- Tabla Proveedores (suppliers) --}}
@@ -287,8 +302,12 @@
                         @endforeach
                     </tbody>
                 </table>
+                @if ($suppliers->hasPages())
+                    <div class="px-6 py-4">
+                        {{ $suppliers->links() }}
+                    </div>
+                @endif
             </div>
-
         </div>
 
         {{-- MODAL DINÁMICO --}}
@@ -452,20 +471,21 @@
                         <template x-if="modalType === 'suppliers'">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label class="block text-sm text-gray-700">RIF</label><input type="text"
-                                        name="rif" x-model="formData.rif" :readonly="modalTitle === 'Editar Registro' ? true : false"
+                                        name="rif" x-model="formData.rif"
+                                        :readonly="modalTitle === 'Editar Registro' ? true : false"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Razón Social / Nombre</label><input
                                         type="text" name="name" x-model="formData.name" maxlength="25"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm" required></div>
                                 <div><label class="block text-sm text-gray-700">Persona de Contacto</label><input
-                                        type="text" name="contact_person" x-model="formData.contact_person" maxlength="50"
-                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
+                                        type="text" name="contact_person" x-model="formData.contact_person"
+                                        maxlength="50" class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div><label class="block text-sm text-gray-700">Teléfono</label><input type="text"
                                         name="phone_number" x-model="formData.phone_number" maxlength="15"
                                         class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div class="col-span-1 md:col-span-2"><label class="block text-sm text-gray-700">Correo
-                                        Electrónico</label><input type="email" name="email" x-model="formData.email" maxlength="25"
-                                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
+                                        Electrónico</label><input type="email" name="email" x-model="formData.email"
+                                        maxlength="25" class="mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                                 <div class="col-span-1 md:col-span-2"><label
                                         class="block text-sm text-gray-700">Dirección</label>
                                     <textarea name="address" rows="2" x-model="formData.address" maxlength="100"

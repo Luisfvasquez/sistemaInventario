@@ -214,43 +214,51 @@
                                                             </div>
 
                                                             {{-- Costo y Precio --}}
-                                                            <div class="grid grid-cols-2 gap-2"
-                                                                x-data="{
-                                                                    unitType: '{{ $product->unit_type ?? 'unit' }}',
-                                                                    editCost: {{ $product->display_cost }},
-                                                                    editPrice: {{ $product->display_price }},
-                                                                    getRealCost() {
-                                                                        return this.unitType === 'gram' ? (parseFloat(this.editCost || 0) / 1000).toFixed(4) : this.editCost;
-                                                                    },
-                                                                    getRealPrice() {
-                                                                        return this.unitType === 'gram' ? (parseFloat(this.editPrice || 0) / 1000).toFixed(4) : this.editPrice;
-                                                                    }
-                                                                }">
+                                                            <div class="grid grid-cols-2 gap-2" x-data="{
+                                                                unitType: '{{ $product->unit_type ?? 'unit' }}',
+                                                                editCost: {{ $product->display_cost }},
+                                                                editPrice: {{ $product->display_price }},
+                                                                getRealCost() {
+                                                                    return this.unitType === 'gram' ? (parseFloat(this.editCost || 0) / 1000).toFixed(4) : this.editCost;
+                                                                },
+                                                                getRealPrice() {
+                                                                    return this.unitType === 'gram' ? (parseFloat(this.editPrice || 0) / 1000).toFixed(4) : this.editPrice;
+                                                                }
+                                                            }">
                                                                 <div>
                                                                     <label
                                                                         class="block text-sm font-medium text-gray-700">Costo
                                                                         (Bs.)
-                                                                        <span x-show="unitType === 'gram'" class="text-xs text-indigo-600 font-bold">/Kg</span>
-                                                                        <span x-show="unitType === 'unit'" class="text-xs text-gray-500 font-bold">/Und</span>
+                                                                        <span x-show="unitType === 'gram'"
+                                                                            class="text-xs text-indigo-600 font-bold">/Kg</span>
+                                                                        <span x-show="unitType === 'unit'"
+                                                                            class="text-xs text-gray-500 font-bold">/Und</span>
                                                                     </label>
-                                                                    <input type="number" step="0.01" x-model="editCost"
+                                                                    <input type="number" step="0.01"
+                                                                        x-model="editCost"
                                                                         class="mt-1 w-full rounded-lg border-gray-300 text-sm"
                                                                         required>
-                                                                    <input type="hidden" name="cost" :value="getRealCost()">
+                                                                    <input type="hidden" name="cost"
+                                                                        :value="getRealCost()">
                                                                 </div>
                                                                 <div>
                                                                     <label
                                                                         class="block text-sm font-medium text-gray-700">Precio
                                                                         (Bs.)
-                                                                        <span x-show="unitType === 'gram'" class="text-xs text-indigo-600 font-bold">/Kg</span>
-                                                                        <span x-show="unitType === 'unit'" class="text-xs text-gray-500 font-bold">/Und</span>
+                                                                        <span x-show="unitType === 'gram'"
+                                                                            class="text-xs text-indigo-600 font-bold">/Kg</span>
+                                                                        <span x-show="unitType === 'unit'"
+                                                                            class="text-xs text-gray-500 font-bold">/Und</span>
                                                                     </label>
-                                                                    <input type="number" step="0.01" x-model="editPrice"
+                                                                    <input type="number" step="0.01"
+                                                                        x-model="editPrice"
                                                                         class="mt-1 w-full rounded-lg border-gray-300 text-sm"
                                                                         required>
-                                                                    <input type="hidden" name="price" :value="getRealPrice()">
+                                                                    <input type="hidden" name="price"
+                                                                        :value="getRealPrice()">
                                                                 </div>
-                                                                <input type="hidden" name="unit_type" :value="unitType">
+                                                                <input type="hidden" name="unit_type"
+                                                                    :value="unitType">
                                                             </div>
 
                                                             {{-- Estado y Stock Mínimo --}}
@@ -415,7 +423,6 @@
                                         </div>
                                     </div>
                                 </template>
-
                             </tr>
                         @empty
                             <tr>
@@ -429,6 +436,10 @@
                     </tbody>
                 </table>
             </div>
+            <div class="px-6 py-4">
+                {{ $products->links() }}
+            </div>
         </div>
+    </div>
     </div>
 @endsection

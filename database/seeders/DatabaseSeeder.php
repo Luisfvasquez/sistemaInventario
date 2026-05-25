@@ -24,15 +24,28 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $user = User::create([
-            'dni' => '0000000000',
-            'name' => 'Admin',
-            'last_name' => 'System',
-            'phone_number' => '0000000000',
-            'email' => 'lvasquez@iwan.cl',
-            'password' => bcrypt('12345678'),
+            'dni' => '29873955',
+            'name' => 'Luis',
+            'last_name' => 'Vasquez',
+            'phone_number' => '04145018145',
+            'email' => 'wueyluis@gmail.com',
+            'password' => bcrypt('password'),
             'is_active' => true,
         ]);
 
         $user->assignRole('admin');
+
+        $user = User::create([
+            'dni' => '0',
+            'name' => 'Venta sin cliente',
+            'last_name' => 'sistema',
+            'phone_number' => '0000000000',
+            'email' => 'inventario@gmail.com',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+
+
+        $user->assignRole('client');
     }
 }

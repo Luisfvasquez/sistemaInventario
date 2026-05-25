@@ -26,7 +26,7 @@ class ProductController extends Controller
     public function index()
     {
         // Usamos eager loading ('category', 'inventory')
-        $products = Product::with(['category', 'inventory'])->get();
+        $products = Product::with(['category', 'inventory'])->paginate(10);
         $categories = Category::all();
 
         return view('admin.products.index', compact('products', 'categories'));
@@ -38,10 +38,9 @@ class ProductController extends Controller
     public function create()
     {
         $categories = Category::all();
-        $exchangeRate = Cache::get('usd_exchange_rate');
         $bulkTypes = BulkType::all();
 
-        return view('admin.products.create', compact('categories', 'exchangeRate', 'bulkTypes'));
+        return view('admin.products.create', compact('categories', 'bulkTypes'));
     }
 
     /**
@@ -59,29 +58,29 @@ class ProductController extends Controller
 
         // 2. Validación de los datos de entrada
         // Si encontramos un producto eliminado, excluimos su ID de las reglas unique
-        $skuUniqueRule = 'required_without:sku_barcode|string|unique:products,sku'.($trashedProduct ? ','.$trashedProduct->id : '');
-        $skuBarcodeUniqueRule = 'required_without:sku|string|unique:products,sku_barcode'.($trashedProduct ? ','.$trashedProduct->id : '');
+        $skuUniqueRule = ['required_without:sku_barcode', 'string', 'regex:/^[a-zA-Z0-9\-\_]+$/', 'unique:products,sku'.($trashedProduct ? ','.$trashedProduct->id : '')];
+        $skuBarcodeUniqueRule = ['required_without:sku', 'string', 'regex:/^[a-zA-Z0-9\-]+$/', 'unique:products,sku_barcode'.($trashedProduct ? ','.$trashedProduct->id : '')];
 
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:50',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
             'sku' => $skuUniqueRule,
             'sku_barcode' => $skuBarcodeUniqueRule,
             'cost' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'unit_type' => 'required|in:unit,gram',
-            'brand' => 'nullable|string|max:50',
-            'description' => 'nullable|string',
+            'brand' => ['nullable', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\&\']+$/'],
+            'description' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
             'minimum_stock' => 'nullable|numeric|min:0',
             // Validamos el array de presentaciones adicionales (bultos, cajas) si vienen
             'presentations' => 'nullable|array',
             'presentations.*.bulk_type_id' => 'required|exists:bulk_types,id', // <-- Validación dinámica
-            'presentations.*.name' => 'required|string',
+            'presentations.*.name' => ['required', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
             'presentations.*.quantity' => 'required|numeric|min:0.01',
             'presentations.*.purchase_price' => 'required|numeric|min:0',
             'presentations.*.sale_price' => 'required|numeric|min:0',
-            'presentations.*.sku' => 'required|string',
-            'presentations.*.sku_barcode' => 'required|string',
+            'presentations.*.sku' => ['required', 'string', 'regex:/^[a-zA-Z0-9\-\_]+$/'],
+            'presentations.*.sku_barcode' => ['required', 'string', 'regex:/^[a-zA-Z0-9\-]+$/'],
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240', // Máximo 10MB por imagen original
         ], [
             'name.required' => 'El nombre del producto es requerido.',
@@ -278,14 +277,14 @@ class ProductController extends Controller
         // 2. Validación de los datos de entrada (con excepciones para el SKU del propio producto)
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:50',
-            'sku' => 'nullable|string|unique:products,sku,'.$product->id,
-            'sku_barcode' => 'nullable|string|unique:products,sku_barcode,'.$product->id,
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
+            'sku' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9\-\_]+$/', 'unique:products,sku,'.$product->id],
+            'sku_barcode' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9\-]+$/', 'unique:products,sku_barcode,'.$product->id],
             'cost' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'unit_type' => 'required|in:unit,gram',
-            'brand' => 'nullable|string|max:50',
-            'description' => 'nullable|string',
+            'brand' => ['nullable', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\&\']+$/'],
+            'description' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
             'minimum_stock' => 'required|numeric|min:0',
             'status' => 'required|in:active,inactive',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
@@ -455,7 +454,7 @@ class ProductController extends Controller
     public function forzarActualizacionDolar()
     {
         Artisan::call('exchange:update-usd');
-
+        
         return back()->with('success', 'La tasa del dólar ha sido actualizada.');
     }
 }

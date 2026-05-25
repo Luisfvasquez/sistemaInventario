@@ -16,7 +16,8 @@ class ClientController extends Controller
     public function index()
     {
         // Cargamos la relación user y deudas para comprobar deudas rápidamente desde el listado
-        $clients = Client::with(['user', 'accountsReceivable'])->get();
+        $clients = Client::with(['user', 'accountsReceivable'])
+        ->paginate(10);
 
         return view('admin.clients.index', compact('clients'));
     }
@@ -30,10 +31,10 @@ class ClientController extends Controller
     {
         // 1. Validaciones base para cualquier cliente
         $rules = [
-            'name' => 'required|string|max:255',
-            'identification' => 'required|string|unique:clients,identification', // Cédula o RIF
-            'phone' => 'nullable|string|max:50',
-            'address' => 'nullable|string',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\-\']+$/'],
+            'identification' => ['required', 'string', 'regex:/^[a-zA-Z0-9\-]+$/', 'unique:clients,identification'], // Cédula o RIF
+            'phone' => ['nullable', 'string', 'max:50', 'regex:/^[\+]?[0-9\s\-\(\)]+$/'],
+            'address' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\#\-\/°]+$/'],
             'create_account' => 'nullable|boolean',
         ];
 
@@ -125,12 +126,12 @@ class ClientController extends Controller
         $client = Client::findOrFail($id);
 
         $rules = [
-            'name' => 'required|string|max:50',
-            'identification' => 'required|string|max:50|unique:clients,identification,'.$client->id,
-            'phone' => 'nullable|string|max:15',
-            'address' => 'nullable|string',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\-\']+$/'],
+            'identification' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9\-]+$/', 'unique:clients,identification,'.$client->id],
+            'phone' => ['nullable', 'string', 'max:15', 'regex:/^[\+]?[0-9\s\-\(\)]+$/'],
+            'address' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\#\-\/°]+$/'],
             'is_active' => 'nullable|boolean',
-            'email' => 'nullable|email|unique:clients,email,'.$client->id,
+            'email' => ['nullable', 'email', 'unique:clients,email,'.$client->id],
         ];
 
         $validated = $request->validate($rules);
@@ -164,9 +165,9 @@ class ClientController extends Controller
             'account_receivable_id' => 'required|exists:accounts_receivable,id',
             'amount' => 'required|numeric|min:0.01',
             'payment_method_id' => 'required|exists:payment_methods,id',
-            'reference' => 'nullable|string|max:100',
+            'reference' => ['nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9@\.\-\_\s\#]+$/'],
             'payment_date' => 'required|date',
-            'notes' => 'nullable|string',
+            'notes' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
         ]);
 
         $client = Client::findOrFail($clientId);

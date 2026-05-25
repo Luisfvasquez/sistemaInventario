@@ -29,10 +29,13 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:50',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
+            'rif' => ['nullable', 'string', 'max:20', 'regex:/^[a-zA-Z0-9\-\.]+$/'],
             'email' => 'required|email|unique:suppliers,email',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:200',
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^[\+]?[0-9\s\-\(\)]+$/'],
+            'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^[\+]?[0-9\s\-\(\)]+$/'],
+            'address' => ['nullable', 'string', 'max:200', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\#\-\/°]+$/'],
+            'contact_person' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\-\']+$/'],
         ]);
 
         try {
@@ -74,10 +77,13 @@ class SupplierController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'name' => 'required|string|max:50',
-            'email' => 'nullable|email|unique:suppliers,email,'.$id,
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:200',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
+            'rif' => ['nullable', 'string', 'max:20', 'regex:/^[a-zA-Z0-9\-\.]+$/'],
+            'email' => ['nullable', 'email', 'unique:suppliers,email,'.$id],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^[\+]?[0-9\s\-\(\)]+$/'],
+            'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^[\+]?[0-9\s\-\(\)]+$/'],
+            'address' => ['nullable', 'string', 'max:200', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\#\-\/°]+$/'],
+            'contact_person' => ['nullable', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\-\']+$/'],
         ]);
 
         $supplier = Supplier::findOrFail($id);

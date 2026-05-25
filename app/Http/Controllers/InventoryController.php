@@ -13,7 +13,7 @@ class InventoryController extends Controller
     public function index()
     {
         // Eager loading de 'product' y 'product.category' para rendimiento
-        $inventories = Inventory::with(['product.category'])->get();
+        $inventories = Inventory::with(['product.category'])->paginate(20);
 
         return view('admin.inventories.index', compact('inventories'));
     }
@@ -58,7 +58,7 @@ class InventoryController extends Controller
         $request->validate([
             'adjustment_type' => 'required|in:addition,subtraction',
             'quantity' => 'required|numeric|min:0.01',
-            'reason' => 'required|string|max:255',
+            'reason' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
         ]);
 
         $quantity = $request->quantity;

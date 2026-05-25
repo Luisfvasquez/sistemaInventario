@@ -139,11 +139,11 @@ class ClientPanelController extends Controller
         $validated = $request->validate([
             'cart_items' => 'required|json',
             'delivery_type' => 'required|in:store_pickup,delivery',
-            'delivery_address' => 'nullable|required_if:delivery_type,delivery|string|max:500',
+            'delivery_address' => ['nullable', 'required_if:delivery_type,delivery', 'string', 'max:500', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\#\-\/°]+$/'],
             'payment_method_id' => 'required|exists:payment_methods,id',
-            'reference' => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9@\.\-\_\s]+$/'],
+            'reference' => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9@\.\-\_\s\#]+$/'],
             'payment_proof' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120', // Máx 5MB
-            'notes' => 'nullable|string|max:1000',
+            'notes' => ['nullable', 'string', 'max:1000', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
         ]);
 
         $cartItems = json_decode($validated['cart_items'], true);
@@ -308,7 +308,7 @@ class ClientPanelController extends Controller
         $orders = Order::where('client_id', $client->id)
             ->with(['details.product'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(5);
 
         return view('client.purchases', compact('client', 'orders'));
     }
@@ -324,15 +324,89 @@ class ClientPanelController extends Controller
         $invoices = Order::where('client_id', $client->id)
             ->where('payment_status', '!=', 'paid')
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(3);
 
         // Cuentas por cobrar asociadas con su desglose de abonos (installments)
         $accounts = AccountReceivable::where('client_id', $client->id)
-            ->with(['order', 'installments'])
+            ->with(['order.payments.paymentMethod', 'installments'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(3);
+            
+        $paymentMethods = PaymentMethod::where('is_active', true)->where('show_in_checkout', true)->get();
 
-        return view('client.invoices', compact('client', 'invoices', 'accounts'));
+        return view('client.invoices', compact('client', 'invoices', 'accounts', 'paymentMethods'));
+    }
+
+    /**
+     * Procesa el reporte de pago/abono subido por el cliente.
+     */
+    public function reportPayment(Request $request)
+    {
+        $client = $this->getClient();
+
+        $validated = $request->validate([
+            'account_receivable_id' => 'required|exists:accounts_receivable,id',
+            'payment_method_id' => 'required|exists:payment_methods,id',
+            'amount' => 'required|numeric|min:0.01',
+            'reference' => 'required|string|max:100',
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120', // Máximo 5MB
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        // Verificar que la deuda pertenezca realmente a este cliente
+        $account = AccountReceivable::where('client_id', $client->id)
+            ->findOrFail($validated['account_receivable_id']);
+
+        if ($validated['amount'] > $account->pending_amount) {
+            return back()->withInput()->withErrors(['error' => 'El monto del abono no puede superar el saldo pendiente (' . number_format($account->pending_amount, 2, ',', '.') . ' BS).']);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $order = $account->order;
+
+            // 1. Guardar la imagen del comprobante
+            $file = $request->file('payment_proof');
+            $path = $file->store('receipts', 'public');
+
+            // 2. Crear el registro PaymentProof (Para visualizar la imagen en el panel admin)
+            $proof = PaymentProof::create([
+                'order_id' => $order->id,
+                'uploaded_by' => Auth::id(),
+                'reference' => $validated['reference'],
+                'status' => 'pending',
+                'notes' => 'Abono reportado desde panel cliente. ' . ($validated['notes'] ?? ''),
+            ]);
+
+            $proof->images()->create([
+                'path' => $path,
+                'disk' => 'public',
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'is_primary' => true,
+            ]);
+
+            // 3. Registrar la intención de pago en la orden (Queda pendiente hasta que el admin lo concilie)
+            OrderPayment::create([
+                'order_id' => $order->id,
+                'payment_method_id' => $validated['payment_method_id'],
+                'amount' => $validated['amount'],
+                'reference' => $validated['reference'],
+                'payment_date' => now(),
+                'status' => 'pending',
+                'notes' => 'Abono a deuda. Reporte web pendiente de verificación.',
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('client.invoices')
+                ->with('success', '¡Comprobante enviado exitosamente! Será verificado por administración en breve.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->withErrors(['error' => 'Error al reportar el abono: ' . $e->getMessage()]);
+        }
     }
 
     /**
@@ -355,11 +429,11 @@ class ClientPanelController extends Controller
         $client = $this->getClient();
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\-\']+$/'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'identification' => ['required', 'string', 'max:50', Rule::unique('clients')->ignore($client->id)],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'address' => ['nullable', 'string', 'max:1000'],
+            'identification' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9\-]+$/', Rule::unique('clients')->ignore($client->id)],
+            'phone' => ['nullable', 'string', 'max:50', 'regex:/^[\+]?[0-9\s\-\(\)]+$/'],
+            'address' => ['nullable', 'string', 'max:1000', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\#\-\/°]+$/'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 

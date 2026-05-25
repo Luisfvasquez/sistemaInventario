@@ -280,6 +280,9 @@
                     </tbody>
                 </table>
             </div>
+            <div class="px-6 py-4">
+                {{ $purchases->links() }}
+            </div>
         </div>
     </div>
 @endsection

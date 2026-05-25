@@ -20,7 +20,7 @@ class PurchaseController extends Controller
         $purchases = Purchase::with(['supplier', 'user', 'details.product', 'details.bulk'])
             ->orderBy('purchased_at', 'desc')
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(10);
 
         return view('admin.purchases.index', compact('purchases'));
     }
@@ -38,11 +38,11 @@ class PurchaseController extends Controller
     {
         $request->validate([
             'supplier_id' => 'required_without:new_supplier_rif|nullable|exists:suppliers,id',
-            'new_supplier_rif' => 'required_without:supplier_id|nullable|string',
-            'new_supplier_name' => 'nullable|string',
-            'purchase_code' => 'required|string|unique:purchases,purchase_code',
+            'new_supplier_rif' => ['required_without:supplier_id', 'nullable', 'string', 'regex:/^[a-zA-Z0-9\-\.]+$/'],
+            'new_supplier_name' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
+            'purchase_code' => ['required', 'string', 'regex:/^[a-zA-Z0-9\-\_\.]+$/', 'unique:purchases,purchase_code'],
             'purchased_at' => 'required|date',
-            'notes' => 'nullable|string',
+            'notes' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
             // Validación del array dinámico de productos
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',

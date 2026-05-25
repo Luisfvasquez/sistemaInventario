@@ -18,7 +18,7 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::with(['client', 'details.product', 'details.bulk'])->orderBy('created_at', 'desc')->get();
+        $orders = Order::with(['client', 'details.product', 'details.bulk'])->orderBy('created_at', 'desc')->paginate(10);
 
         return view('admin.orders.index', compact('orders'));
     }
@@ -39,61 +39,135 @@ class OrderController extends Controller
             'payments.paymentMethod',
             'paymentProofs.images'
         ])->findOrFail($id);
+        $paymentMethods = PaymentMethod::where('is_active', true)->where('show_in_checkout', true)->get();
 
-        return view('admin.orders.show', compact('order'));
+        return view('admin.orders.show', compact('order', 'paymentMethods'));
+    }
+
+    public function uploadProof(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->payment_status !== 'pending') {
+            return back()->withErrors(['error' => 'No puedes subir comprobantes a una orden ya procesada.']);
+        }
+
+        $request->validate([
+            'payment_method_id' => 'required|exists:payment_methods,id',
+            'amount' => 'required|numeric|min:0.01',
+            'reference' => 'required|string|max:100',
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $file = $request->file('payment_proof');
+            $path = $file->store('receipts', 'public');
+
+            // 1. Crear el registro visual del comprobante
+            $proof = \App\Models\PaymentProof::create([
+                'order_id' => $order->id,
+                'uploaded_by' => auth()->id(),
+                'reference' => $request->reference,
+                'status' => 'pending',
+                'notes' => 'Comprobante reportado manualmente por administración (ej: Vía WhatsApp).',
+            ]);
+
+            $proof->images()->create([
+                'path' => $path,
+                'disk' => 'public',
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'is_primary' => true,
+            ]);
+
+            // 2. Registrar la intención de pago (quedará pendiente hasta hacer clic en "Aprobar")
+            OrderPayment::create([
+                'order_id' => $order->id,
+                'payment_method_id' => $request->payment_method_id,
+                'amount' => $request->amount,
+                'reference' => $request->reference,
+                'payment_date' => now(),
+                'status' => 'pending',
+                'notes' => 'Cargado manualmente por administración.',
+            ]);
+
+            DB::commit();
+
+            return back()->with('success', '¡Comprobante adjuntado con éxito! Ahora puedes verificar la información y Aprobar la orden.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Error al subir el comprobante: ' . $e->getMessage()]);
+        }
     }
 
     public function approve(Request $request, $id)
     {
+        // 1. Validar que nos envíen el estado
+        $request->validate([
+            'status' => 'required|in:ready_for_pickup,completed'
+        ]);
+
         $order = Order::findOrFail($id);
 
-        if ($order->status !== 'pending') {
-            return back()->withErrors(['error' => 'La orden ya fue procesada anteriormente.']);
+        if ($order->status === 'completed') {
+            return back()->withErrors(['error' => 'La orden ya fue procesada y completada anteriormente.']);
         }
 
         try {
             DB::beginTransaction();
 
-            // 1. Actualizar Orden
-            $order->update([
-                'status' => 'completed',
+            // 2. Preparamos los datos base para actualizar
+            $updateData = [
+                'status' => $request->status, // Toma el valor del select (ready_for_pickup o completed)
                 'verification_status' => 'verified',
                 'payment_status' => 'paid',
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
-            ]);
+            ];
 
-            // 2. Actualizar Comprobantes vinculados
+            // 3. Si se marcó como 'completed', significa que ya se entregó físicamente.
+            // Le asignamos la fecha de entrega si aún no la tenía.
+            if ($request->status === 'completed' && is_null($order->delivered_at)) {
+                $updateData['delivered_at'] = now();
+            }
+
+            // 4. Actualizar Orden
+            $order->update($updateData);
+
+            // 5. Actualizar Comprobantes vinculados
             $order->paymentProofs()->update([
                 'status' => 'verified',
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
             ]);
 
-            // 3. Actualizar los pagos registrados en la orden
+            // 6. Actualizar los pagos registrados en la orden
             $order->payments()->update([
                 'status' => 'verified',
                 'verified_by' => auth()->id(),
             ]);
 
-            // 4. NUEVO: Liquidar la cuenta por cobrar (Fiado/Deuda) si existe
+            // 7. Liquidar la cuenta por cobrar (Fiado/Deuda) si existe
             $account = \App\Models\AccountReceivable::where('order_id', $order->id)->first();
             if ($account && $account->status !== 'paid') {
                 $account->update([
                     'paid_amount' => $account->total_amount,
                     'pending_amount' => 0.00,
                     'status' => 'paid',
-                    'notes' => trim($account->notes . ' | Liquidada automáticamente al aprobar la orden web.')
+                    'notes' => trim($account->notes . ' | Liquidada automáticamente al aprobar pago.')
                 ]);
             }
 
             DB::commit();
 
             return redirect()->route('admin.orders.show', $order->id)
-                ->with('success', 'Orden y pago verificados exitosamente. Deuda liquidada.');
+                ->with('success', 'El pago ha sido verificado y el estado de la orden actualizado correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Error al aprobar la orden: ' . $e->getMessage()]);
+            return back()->withErrors(['error' => 'Error al procesar la orden: ' . $e->getMessage()]);
         }
     }
 
@@ -101,7 +175,7 @@ class OrderController extends Controller
     {
         $order = Order::with('details.product.inventory')->findOrFail($id);
 
-        if ($order->status !== 'pending') {
+        if ($order->payment_status !== 'pending') {
             return back()->withErrors(['error' => 'Solo se pueden rechazar órdenes en estado pendiente.']);
         }
 
@@ -120,7 +194,7 @@ class OrderController extends Controller
 
                     InventoryMovement::create([
                         'product_id' => $product->id,
-                        'type' => 'cancellation',
+                        'type' => 'return',
                         'reference_type' => get_class($order),
                         'reference_id' => $order->id,
                         'quantity' => $qtyToReturn,
@@ -135,6 +209,7 @@ class OrderController extends Controller
             // 2. Cancelar Orden
             $order->update([
                 'status' => 'cancelled',
+                'payment_status' => 'rejected',
                 'verification_status' => 'rejected',
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
@@ -218,7 +293,7 @@ class OrderController extends Controller
 
     public function storeClient(Request $request)
     {
-        $request->validate(['identification' => 'required|string|unique:clients,identification']);
+        $request->validate(['identification' => ['required', 'string', 'regex:/^[a-zA-Z0-9\-]+$/', 'unique:clients,identification']]);
 
         $client = Client::create([
             'uuid' => Str::uuid(),
@@ -255,6 +330,8 @@ class OrderController extends Controller
             $payment_status = 'partial';
         }
 
+        $verification_status = $payment_status === 'paid' ? 'verified' : 'pending';
+
         try {
             DB::beginTransaction();
 
@@ -268,7 +345,7 @@ class OrderController extends Controller
                 'order_number' => $orderNumber,
                 'order_type' => 'store',
                 'payment_status' => $payment_status,
-                'verification_status' => 'verified',
+                'verification_status' => $verification_status,
                 'status' => 'completed',
                 'subtotal' => $total_order,
                 'exchange_rate' => $data['exchange_rate'],
@@ -353,6 +430,34 @@ class OrderController extends Controller
             DB::rollBack();
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function deliver(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+
+        // Validar que la orden esté pagada/aprobada y no haya sido entregada ya
+        if ($order->status !== 'completed' || $order->delivered_at !== null) {
+            return back()->withErrors(['error' => 'La orden no está lista para entrega o ya fue entregada.']);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $order->update([
+                'delivered_at' => now(),
+                // Opcional: si tienes un estado 'delivered' puedes cambiarlo aquí
+                // 'status' => 'delivered' 
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('admin.orders.show', $order->id)
+                ->with('success', 'La orden ha sido marcada como entregada al cliente exitosamente.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Error al procesar la entrega: ' . $e->getMessage()]);
         }
     }
 }

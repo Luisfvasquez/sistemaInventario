@@ -13,8 +13,8 @@ class PaymentMethodController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:50',
-            'description' => 'nullable|string',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
+            'description' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
             'requires_reference' => 'boolean',
             'show_in_checkout' => 'boolean',
             'is_active' => 'boolean',
@@ -33,8 +33,8 @@ class PaymentMethodController extends Controller
         $paymentMethod = PaymentMethod::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:50',
-            'description' => 'nullable|string',
+            'name' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\-\/\(\)\&\%]+$/'],
+            'description' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\;\:\-\/\(\)\¿\?\¡\!\@\#\%\&\=\+\'\"°\n\r]+$/'],
             'requires_reference' => 'boolean',
             'show_in_checkout' => 'boolean',
             'is_active' => 'boolean',

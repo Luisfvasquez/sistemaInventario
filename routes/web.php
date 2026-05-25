@@ -42,7 +42,8 @@ Route::middleware(['auth', 'role:admin'])
         Route::resource('orders', OrderController::class)->names('admin.orders');
         Route::post('orders/{id}/approve', [OrderController::class, 'approve'])->name('admin.orders.approve');
         Route::post('orders/{id}/reject', [OrderController::class, 'reject'])->name('admin.orders.reject');
-
+        Route::post('orders/{id}/proof', [OrderController::class, 'uploadProof'])->name('admin.orders.proof');
+        Route::post('orders/{id}/deliver', [OrderController::class, 'deliver'])->name('admin.orders.deliver');
 
         // Rutas API para el Punto de Venta (POS)
         Route::get('pos/products/search', [OrderController::class, 'searchProduct'])->name('admin.pos.products.search');
@@ -50,6 +51,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::post('pos/clients/quick-store', [OrderController::class, 'storeClient'])->name('admin.pos.clients.store');
 
         Route::resource('payment_methods', PaymentMethodController::class)->only(['store', 'update', 'destroy'])->names('admin.payment_methods');
+
     });
 
 Route::middleware('auth')->group(function () {
@@ -68,6 +70,7 @@ Route::middleware(['auth', 'role:client'])
         Route::get('/checkout', [ClientPanelController::class, 'checkoutView'])->name('client.checkout.view');
         Route::get('/compras', [ClientPanelController::class, 'purchases'])->name('client.purchases');
         Route::get('/facturas', [ClientPanelController::class, 'invoices'])->name('client.invoices');
+        Route::post('/facturas/reportar-pago', [ClientPanelController::class, 'reportPayment'])->name('client.invoices.report');
         Route::get('/perfil', [ClientPanelController::class, 'profile'])->name('client.profile');
         Route::patch('/perfil', [ClientPanelController::class, 'profileUpdate'])->name('client.profile.update');
     });

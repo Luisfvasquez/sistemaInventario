@@ -85,12 +85,15 @@
                                             $hasDebt = $pendingDebt > 0;
                                         @endphp
                                         @if ($hasDebt)
-                                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="Cliente con saldo deudor de Bs./$ {{ number_format($pendingDebt, 2, ',', '.') }}"></span>
+                                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"
+                                                title="Cliente con saldo deudor de Bs./$ {{ number_format($pendingDebt, 2, ',', '.') }}"></span>
                                         @else
-                                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500" title="Al día / Sin deudas"></span>
+                                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500"
+                                                title="Al día / Sin deudas"></span>
                                         @endif
                                     </div>
-                                    <div class="text-xs text-gray-500 font-mono">C.I. / RIF: {{ $client->identification }}</div>
+                                    <div class="text-xs text-gray-500 font-mono">C.I. / RIF: {{ $client->identification }}
+                                    </div>
                                 </td>
 
                                 {{-- Teléfono y Correo --}}
@@ -164,6 +167,11 @@
                     </tbody>
                 </table>
             </div>
+            @if ($clients->hasPages())
+                <div class="px-6 py-4">
+                    {{ $clients->links() }}
+                </div>
+            @endif
         </div>
 
         {{-- ===================== MODAL: FICHA DEL CLIENTE ===================== --}}
@@ -243,11 +251,17 @@
                         </div>
 
                         <div class="pt-3 border-t border-gray-100">
-                            <span class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Estado Financiero (Deudas)</span>
+                            <span class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Estado
+                                Financiero (Deudas)</span>
                             <template x-if="selected.has_debt">
-                                <div class="bg-red-50 p-4 rounded-xl border border-red-100 text-red-950 space-y-2 relative overflow-hidden">
-                                    <div class="absolute right-3 top-3 w-12 h-12 text-red-100 opacity-20 pointer-events-none">
-                                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                                <div
+                                    class="bg-red-50 p-4 rounded-xl border border-red-100 text-red-950 space-y-2 relative overflow-hidden">
+                                    <div
+                                        class="absolute right-3 top-3 w-12 h-12 text-red-100 opacity-20 pointer-events-none">
+                                        <svg fill="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                                        </svg>
                                     </div>
                                     <div class="flex items-center space-x-2 font-bold text-red-700 text-sm">
                                         <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
@@ -260,17 +274,27 @@
                                         Bs. / $ <span x-text="selected.total_debt"></span>
                                     </div>
                                     <div class="pt-1.5">
-                                        <a :href="'/admin/clients/' + selected.id" class="inline-flex items-center text-xs font-bold text-red-700 hover:text-red-900 underline transition-colors">
+                                        <a :href="'/admin/clients/' + selected.id"
+                                            class="inline-flex items-center text-xs font-bold text-red-700 hover:text-red-900 underline transition-colors">
                                             Ir al Historial de Deudas
-                                            <svg class="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                            <svg class="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M9 5l7 7-7 7" />
+                                            </svg>
                                         </a>
                                     </div>
                                 </div>
                             </template>
                             <template x-if="!selected.has_debt">
-                                <div class="bg-green-50 p-4 rounded-xl border border-green-100 text-green-950 space-y-2 relative overflow-hidden">
-                                    <div class="absolute right-3 top-3 w-12 h-12 text-green-100 opacity-20 pointer-events-none">
-                                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                <div
+                                    class="bg-green-50 p-4 rounded-xl border border-green-100 text-green-950 space-y-2 relative overflow-hidden">
+                                    <div
+                                        class="absolute right-3 top-3 w-12 h-12 text-green-100 opacity-20 pointer-events-none">
+                                        <svg fill="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                        </svg>
                                     </div>
                                     <div class="flex items-center space-x-2 font-bold text-green-700 text-sm">
                                         <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
@@ -412,7 +436,8 @@
                         <div class="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row-reverse gap-3 border-t border-gray-100">
                             <button type="submit" x-data="{ enviando: false }" @submit.window="enviando = true"
                                 :disabled="enviando"
-                                :class="enviando ? 'opacity-50 cursor-not-allowed bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'"
+                                :class="enviando ? 'opacity-50 cursor-not-allowed bg-indigo-400' :
+                                    'bg-indigo-600 hover:bg-indigo-700'"
                                 class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
