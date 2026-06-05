@@ -9,8 +9,6 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
-    {{-- Alpine.js (Puedes quitar esto si ya lo tienes incluido en app.js a través de npm) --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
 <body class="bg-gray-100" x-data="{ sidebarOpen: false }">

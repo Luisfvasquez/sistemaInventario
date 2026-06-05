@@ -9,6 +9,7 @@ use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\OrderPayment;
 use App\Models\PaymentMethod;
+use App\Models\PaymentProof;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,16 +33,24 @@ class OrderController extends Controller
 
     public function show($id)
     {
+        // 1. Cargar la orden con sus relaciones principales (excepto details)
         $order = Order::with([
             'client',
-            'details.product',
-            'details.bulk',
             'payments.paymentMethod',
-            'paymentProofs.images'
+            'paymentProofs.images',
         ])->findOrFail($id);
-        $paymentMethods = PaymentMethod::where('is_active', true)->where('show_in_checkout', true)->get();
 
-        return view('admin.orders.show', compact('order', 'paymentMethods'));
+        // 2. Paginar los detalles directamente desde la relación de la orden
+        $details = $order->details()
+            ->with(['product', 'bulk']) // Cargar relaciones anidadas de los detalles
+            ->paginate(4); // Cambia el 10 por la cantidad de items que desees por página
+
+        $paymentMethods = PaymentMethod::where('is_active', true)
+            ->where('show_in_checkout', true)
+            ->get();
+
+        // 3. Pasar la variable $details extra a la vista
+        return view('admin.orders.show', compact('order', 'details', 'paymentMethods'));
     }
 
     public function uploadProof(Request $request, $id)
@@ -66,7 +75,7 @@ class OrderController extends Controller
             $path = $file->store('receipts', 'public');
 
             // 1. Crear el registro visual del comprobante
-            $proof = \App\Models\PaymentProof::create([
+            $proof = PaymentProof::create([
                 'order_id' => $order->id,
                 'uploaded_by' => auth()->id(),
                 'reference' => $request->reference,
@@ -99,7 +108,8 @@ class OrderController extends Controller
             return back()->with('success', '¡Comprobante adjuntado con éxito! Ahora puedes verificar la información y Aprobar la orden.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Error al subir el comprobante: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'Error al subir el comprobante: '.$e->getMessage()]);
         }
     }
 
@@ -107,7 +117,7 @@ class OrderController extends Controller
     {
         // 1. Validar que nos envíen el estado
         $request->validate([
-            'status' => 'required|in:ready_for_pickup,completed'
+            'status' => 'required|in:ready_for_pickup,completed',
         ]);
 
         $order = Order::findOrFail($id);
@@ -151,13 +161,13 @@ class OrderController extends Controller
             ]);
 
             // 7. Liquidar la cuenta por cobrar (Fiado/Deuda) si existe
-            $account = \App\Models\AccountReceivable::where('order_id', $order->id)->first();
+            $account = AccountReceivable::where('order_id', $order->id)->first();
             if ($account && $account->status !== 'paid') {
                 $account->update([
                     'paid_amount' => $account->total_amount,
                     'pending_amount' => 0.00,
                     'status' => 'paid',
-                    'notes' => trim($account->notes . ' | Liquidada automáticamente al aprobar pago.')
+                    'notes' => trim($account->notes.' | Liquidada automáticamente al aprobar pago.'),
                 ]);
             }
 
@@ -167,7 +177,8 @@ class OrderController extends Controller
                 ->with('success', 'El pago ha sido verificado y el estado de la orden actualizado correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Error al procesar la orden: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'Error al procesar la orden: '.$e->getMessage()]);
         }
     }
 
@@ -200,7 +211,7 @@ class OrderController extends Controller
                         'quantity' => $qtyToReturn,
                         'previous_stock' => $previousStock,
                         'new_stock' => $previousStock + $qtyToReturn,
-                        'notes' => 'Reintegro por orden rechazada: ' . $order->order_number,
+                        'notes' => 'Reintegro por orden rechazada: '.$order->order_number,
                         'created_by' => auth()->id(),
                     ]);
                 }
@@ -213,7 +224,7 @@ class OrderController extends Controller
                 'verification_status' => 'rejected',
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
-                'notes' => $order->notes . ' | Rechazada el ' . now()->format('d/m/Y') . ' por: ' . ($request->notes ?? 'Sin justificación'),
+                'notes' => $order->notes.' | Rechazada el '.now()->format('d/m/Y').' por: '.($request->notes ?? 'Sin justificación'),
             ]);
 
             // 3. Cancelar Comprobantes y Pagos
@@ -229,12 +240,12 @@ class OrderController extends Controller
             ]);
 
             // 4. NUEVO: Anular la cuenta por cobrar (Fiado/Deuda) si existe
-            $account = \App\Models\AccountReceivable::where('order_id', $order->id)->first();
+            $account = AccountReceivable::where('order_id', $order->id)->first();
             if ($account) {
                 $account->update([
                     'status' => 'cancelled', // Marcamos como cancelada
                     'pending_amount' => 0.00, // Ponemos en 0 para que no sume como deuda global
-                    'notes' => trim($account->notes . ' | Anulada por rechazo de la orden.')
+                    'notes' => trim($account->notes.' | Anulada por rechazo de la orden.'),
                 ]);
             }
 
@@ -244,7 +255,8 @@ class OrderController extends Controller
                 ->with('success', 'Orden rechazada, deuda anulada y stock reintegrado correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Error al rechazar la orden: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'Error al rechazar la orden: '.$e->getMessage()]);
         }
     }
 
@@ -312,14 +324,20 @@ class OrderController extends Controller
     {
         // El request vendrá como JSON desde Alpine
         $data = $request->validate([
-            'client_id' => 'required|exists:clients,id',
+            'client_id' => 'nullable|exists:clients,id',
             'cart' => 'required|array|min:1',
             'payments' => 'nullable|array',
             'exchange_rate' => 'required|numeric',
         ]);
 
+        $clientId = $request->input('client_id') ?? 0;
+
+        if ($data['client_id'] == null) {
+            $data['client_id'] = Client::where('identification', $clientId)->first()->id;
+        }
+
         $total_order = collect($data['cart'])->sum('subtotal');
-        $amount_received = collect($data['payments'] ?? [])->sum(fn($p) => (float) ($p['amount'] ?? 0));
+        $amount_received = collect($data['payments'] ?? [])->sum(fn ($p) => (float) ($p['amount'] ?? 0));
         $amount_pending = round($total_order - $amount_received, 2);
 
         // Determinar estado
@@ -335,7 +353,7 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            $orderNumber = 'ORD-' . date('Ym') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+            $orderNumber = 'ORD-'.date('Ym').'-'.str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
 
             // 1. Crear Orden
             $order = Order::create([
@@ -350,7 +368,7 @@ class OrderController extends Controller
                 'subtotal' => $total_order,
                 'exchange_rate' => $data['exchange_rate'],
                 'total' => $total_order,
-                'notes' => 'Tasa de cambio: Bs. ' . $data['exchange_rate'],
+                'notes' => 'Tasa de cambio: Bs. '.$data['exchange_rate'],
             ]);
 
             // 2. Insertar Detalles y Descontar Inventario
@@ -423,7 +441,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => '¡Venta Procesada! Orden: ' . $orderNumber,
+                'message' => '¡Venta Procesada! Orden: '.$orderNumber,
                 'redirect' => route('admin.orders.index'), // O donde quieras mandarlo tras el éxito
             ]);
         } catch (\Exception $e) {
@@ -448,7 +466,7 @@ class OrderController extends Controller
             $order->update([
                 'delivered_at' => now(),
                 // Opcional: si tienes un estado 'delivered' puedes cambiarlo aquí
-                // 'status' => 'delivered' 
+                // 'status' => 'delivered'
             ]);
 
             DB::commit();
@@ -457,7 +475,8 @@ class OrderController extends Controller
                 ->with('success', 'La orden ha sido marcada como entregada al cliente exitosamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Error al procesar la entrega: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'Error al procesar la entrega: '.$e->getMessage()]);
         }
     }
 }

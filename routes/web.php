@@ -52,6 +52,12 @@ Route::middleware(['auth', 'role:admin'])
 
         Route::resource('payment_methods', PaymentMethodController::class)->only(['store', 'update', 'destroy'])->names('admin.payment_methods');
 
+        // Configuración de Roles y Asignaciones
+        Route::prefix('config')->group(function () {
+            Route::resource('roles', \App\Http\Controllers\RoleController::class)->names('admin.roles');
+            Route::get('users-roles', [\App\Http\Controllers\UserRoleController::class, 'index'])->name('admin.users-roles.index');
+            Route::post('users-roles/{user}', [\App\Http\Controllers\UserRoleController::class, 'update'])->name('admin.users-roles.update');
+        });
     });
 
 Route::middleware('auth')->group(function () {

@@ -56,6 +56,33 @@
             Administración
         </a>
 
+        {{-- Configuración (Colapsable con Alpine.js) --}}
+        <div x-data="{ configOpen: {{ request()->routeIs('admin.roles.*') || request()->routeIs('admin.users-roles.*') ? 'true' : 'false' }} }" class="space-y-1">
+            <button @click="configOpen = !configOpen"
+                class="w-full flex items-center justify-between px-4 py-2 rounded transition-colors text-gray-300 hover:bg-gray-800 hover:text-white focus:outline-none">
+                <span class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span>Configuración</span>
+                </span>
+                <svg class="w-4 h-4 transform transition-transform duration-200" :class="{ 'rotate-180': configOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div x-show="configOpen" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" class="pl-4 space-y-1" style="display: none;">
+                <a href="{{ route('admin.roles.index') }}"
+                    class="block px-4 py-2 rounded text-sm transition-colors {{ request()->routeIs('admin.roles.*') ? 'bg-gray-800 text-white font-medium' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                    Roles y Permisos
+                </a>
+                <a href="{{ route('admin.users-roles.index') }}"
+                    class="block px-4 py-2 rounded text-sm transition-colors {{ request()->routeIs('admin.users-roles.*') ? 'bg-gray-800 text-white font-medium' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                    Asignar Roles
+                </a>
+            </div>
+        </div>
+
     </nav>
 
 </aside>

@@ -12,10 +12,7 @@ class InventoryController extends Controller
      */
     public function index()
     {
-        // Eager loading de 'product' y 'product.category' para rendimiento
-        $inventories = Inventory::with(['product.category'])->paginate(20);
-
-        return view('admin.inventories.index', compact('inventories'));
+        return view('admin.inventories.index');
     }
 
     /**

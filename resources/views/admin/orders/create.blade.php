@@ -51,19 +51,26 @@
             </div>
 
             {{-- Carrito de Compras --}}
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden min-h-[300px]">
+            <div x-ref="cartContainer"
+                class="bg-white rounded-xl shadow-sm overflow-y-auto max-h-[400px] min-h-[300px] relative">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-800 text-white">
+                    <thead class="bg-gray-800 text-white sticky top-0 z-10">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-bold uppercase">Producto</th>
-                            <th class="px-4 py-3 text-center text-xs font-bold uppercase">Cant.</th>
-                            <th class="px-4 py-3 text-right text-xs font-bold uppercase">Subtotal</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Producto</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider">Cant.</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">Subtotal</th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <template x-for="(item, index) in cart" :key="index">
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50" x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0 transform translate-y-4"
+                                x-transition:enter-end="opacity-100 transform translate-y-0"
+                                x-transition:leave="transition ease-in duration-200"
+                                x-transition:leave-start="opacity-100 transform scale-100"
+                                x-transition:leave-end="opacity-0 transform scale-95">
+
                                 <td class="px-4 py-3">
                                     <div class="font-bold text-gray-900" x-text="item.name"></div>
                                     <div class="text-xs text-gray-500 font-bold">
@@ -72,7 +79,8 @@
                                     </div>
                                     <template
                                         x-if="!item.allow_negative && (item.current_stock < (item.quantity * item.conversion_factor))">
-                                        <span class="text-[10px] text-white bg-red-500 px-2 py-0.5 rounded font-bold">Sin
+                                        <span
+                                            class="text-[10px] text-white bg-red-500 px-2 py-0.5 rounded font-bold mt-1 inline-block">Sin
                                             Stock Físico</span>
                                     </template>
                                 </td>
@@ -90,7 +98,7 @@
                                 </td>
                                 <td class="px-4 py-3 text-center">
                                     <button @click="removeItem(index)"
-                                        class="text-red-500 hover:text-red-700 font-black text-xl px-2">×</button>
+                                        class="text-red-500 hover:text-red-700 font-black text-xl px-2 transition-colors focus:outline-none">×</button>
                                 </td>
                             </tr>
                         </template>
@@ -143,7 +151,8 @@
                     <div class="flex items-center space-x-2">
                         <h3 class="text-sm font-bold text-gray-700 uppercase">Pagos Recibidos</h3>
                         <label class="inline-flex items-center text-xs font-bold ml-3">
-                            <input type="checkbox" class="form-checkbox h-4 w-4" x-model="isCreditSale" @change="toggleCreditSale">
+                            <input type="checkbox" class="form-checkbox h-4 w-4" x-model="isCreditSale"
+                                @change="toggleCreditSale">
                             <span class="ml-2">Vender a Fiado</span>
                         </label>
                     </div>
@@ -217,8 +226,8 @@
                     </div>
                 </div>
 
-                <button @click.prevent="processOrder" :disabled="isSubmitting || !clientId || cart.length === 0"
-                    :class="isSubmitting || !clientId || cart.length === 0 ? 'bg-gray-600 text-gray-400 cursor-not-allowed' :
+                <button @click.prevent="processOrder" :disabled="isSubmittin || cart.length === 0"
+                    :class="isSubmitting || cart.length === 0 ? 'bg-gray-600 text-gray-400 cursor-not-allowed' :
                         'bg-emerald-500 text-gray-900 hover:bg-emerald-400 shadow-[0_0_15px_rgba(34,197,94,0.4)]'"
                     class="w-full mt-4 font-black py-4 rounded-xl transition-all uppercase text-lg">
                     <span x-text="isSubmitting ? 'Facturando...' : 'Generar Venta'"></span>
@@ -313,7 +322,16 @@
                             subtotal: 0
                         });
                     }
-
+                    // Dentro de la función donde haces el this.cart.push(...) o this.cart.unshift(...)
+                    this.$nextTick(() => {
+                        let container = this.$refs.cartContainer;
+                        if (container) {
+                            container.scrollTo({
+                                top: container.scrollHeight,
+                                behavior: 'smooth'
+                            });
+                        }
+                    });
                     this.searchQuery = '';
                     this.searchResults = [];
                     this.updateTotals();
@@ -413,7 +431,8 @@
                         // activar fiado: limpiar pagos y recalcular
                         this.payments = [];
                         this.amountReceived = 0;
-                        this.amountPending = parseFloat((this.totalOrder - this.amountReceived).toFixed(2));
+                        this.amountPending = parseFloat((this.totalOrder - this.amountReceived).toFixed(
+                            2));
                     } else {
                         // desactivar fiado: asegurar al menos una línea de pago
                         if (this.payments.length === 0 && this.availablePaymentMethods.length > 0) {

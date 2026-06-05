@@ -99,6 +99,7 @@
                     <div class="p-4 border-b border-gray-100 bg-gray-50/50">
                         <h3 class="font-bold text-gray-800">Productos Solicitados</h3>
                     </div>
+
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-bold">
@@ -110,7 +111,8 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 text-sm">
-                                @foreach ($order->details as $detail)
+                                {{-- Modificamos la iteración aquí --}}
+                                @foreach ($details as $detail)
                                     <tr>
                                         <td class="px-6 py-4 font-semibold text-gray-800">
                                             {{ $detail->product->name }}
@@ -132,10 +134,18 @@
                         </table>
                     </div>
 
+                    {{-- Enlaces de paginación con padding para que respire el diseño --}}
+                    @if ($details->hasPages())
+                        <div class="px-6 py-4 border-t border-gray-100">
+                            {{ $details->links() }}
+                        </div>
+                    @endif
+
                     <div class="p-6 bg-gray-50 flex justify-end">
                         <div class="w-full md:w-1/2 space-y-2">
                             <div class="flex justify-between text-sm text-gray-500">
                                 <span>Subtotal</span>
+                                {{-- Estos totales seguirán funcionando porque provienen del objeto Order principal --}}
                                 <span>Bs. {{ number_format($order->subtotal, 2) }}</span>
                             </div>
                             <div

@@ -144,8 +144,8 @@
                                 <label
                                     class="block text-slate-700 font-extrabold text-xs uppercase tracking-wider">Número
                                     de Referencia</label>
-                                <input type="text" name="reference" required value="{{ old('reference') }}" maxlength="50"
-                                    placeholder="Ej: 001456228"
+                                <input type="text" name="reference" required value="{{ old('reference') }}"
+                                    maxlength="50" placeholder="Ej: 001456228"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm font-bold transition-all outline-none" />
                             </div>
 

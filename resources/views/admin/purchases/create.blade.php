@@ -91,28 +91,50 @@
                             class="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-300">
                             Crear Nuevo Producto (Nueva Pestaña)
                         </a>
-                        <button type="button" @click="addRow()"
-                            class="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">
-                            + Agregar Fila
-                        </button>
                     </div>
                 </div>
 
-                <div class="space-y-4">
+                <!-- Contenedor con Scroll para los productos -->
+                <div x-ref="productsContainer" class="max-h-[450px] overflow-y-auto pr-2 space-y-4 mb-4 pb-32">
                     <template x-for="(row, index) in rows" :key="index">
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 border rounded-xl bg-gray-50 items-end">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 border rounded-xl bg-gray-50 items-end relative"
+                            :class="row.showDropdown ? 'z-50' : 'z-10'">
 
-                            {{-- Seleccionar Producto --}}
-                            <div class="md:col-span-3">
+                            {{-- Seleccionar Producto con Buscador --}}
+                            <div class="md:col-span-3 relative" @click.away="row.showDropdown = false">
                                 <label class="block text-xs font-bold text-gray-500">Producto</label>
-                                <select :name="`items[${index}][product_id]`" x-model="row.product_id"
-                                    @change="updateBulks(index)" class="w-full mt-1 rounded-lg border-gray-300 text-sm"
+                                <input type="text" x-model="row.searchQuery" @focus="row.showDropdown = true"
+                                    @input="row.showDropdown = true; row.product_id = ''; updateBulks(index)"
+                                    placeholder="Buscar producto..."
+                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
                                     required>
-                                    <option value="">Seleccione...</option>
-                                    <template x-for="prod in productsList" :key="prod.id">
-                                        <option :value="prod.id" x-text="prod.name"></option>
-                                    </template>
-                                </select>
+
+                                <input type="hidden" :name="`items[${index}][product_id]`" x-model="row.product_id"
+                                    required>
+
+                                <div x-show="row.showDropdown"
+                                    class="absolute left-0 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 max-h-48 overflow-y-auto z-50"
+                                    style="display: none;">
+                                    <ul class="py-1 text-sm text-gray-700">
+                                        <template x-for="prod in filteredProducts(row.searchQuery)" :key="prod.id">
+                                            <li @click="selectProduct(index, prod)"
+                                                class="cursor-pointer hover:bg-blue-50 hover:text-blue-900 px-3 py-2 border-b border-gray-100 flex justify-between items-center transition-colors duration-150">
+                                                <div class="flex flex-col">
+                                                    <span class="font-semibold text-gray-800" x-text="prod.name"></span>
+                                                    <span class="text-xs text-gray-400 font-mono"
+                                                        x-text="'SKU/Cód: ' + (prod.sku_barcode || 'N/A')"></span>
+                                                </div>
+                                                <span
+                                                    class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase"
+                                                    x-text="prod.unit_type === 'gram' ? 'Kilos' : 'Unidades'"></span>
+                                            </li>
+                                        </template>
+                                        <template x-if="filteredProducts(row.searchQuery).length === 0">
+                                            <li class="px-3 py-3 text-gray-500 text-xs text-center font-medium">No se
+                                                encontraron productos</li>
+                                        </template>
+                                    </ul>
+                                </div>
                             </div>
 
                             {{-- Seleccionar Presentación (Depende del producto) --}}
@@ -124,8 +146,7 @@
                                     <option value="">Seleccione...</option>
                                     <template x-for="bulk in row.availableBulks" :key="bulk.id">
                                         <option :value="bulk.id"
-                                            x-text="bulk.name + ' (Trae ' + bulk.quantity + ')'">
-                                        </option>
+                                            x-text="bulk.name + ' (Trae ' + bulk.quantity + ')'"></option>
                                     </template>
                                 </select>
                             </div>
@@ -134,9 +155,9 @@
                             <div class="md:col-span-2">
                                 <label class="block text-xs font-bold text-gray-500">Cantidad (Ej: 5 Kilos)</label>
                                 <input type="number" :step="row.unit_type === 'gram' ? '0.01' : '1'"
-                                    :min="row.unit_type === 'gram' ? '0.01' : '1'" :name="`items[${index}][quantity]`"
-                                    x-model="row.quantity" class="w-full mt-1 rounded-lg border-gray-300 text-sm" required
-                                    inputmode="decimal"
+                                    :min="row.unit_type === 'gram' ? '0.01' : '1'"
+                                    :name="`items[${index}][quantity]`" x-model="row.quantity"
+                                    class="w-full mt-1 rounded-lg border-gray-300 text-sm" required inputmode="decimal"
                                     oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
                                     title="Solo números positivos">
                             </div>
@@ -168,6 +189,14 @@
                         </div>
                     </template>
                 </div>
+
+                <!-- Botón Agregar Fila al pie de la sección, al lado de la lista scrollable -->
+                <div class="flex justify-start">
+                    <button type="button" @click="addRow()"
+                        class="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold shadow-md transition-colors duration-200">
+                        + Agregar Fila
+                    </button>
+                </div>
             </div>
 
             {{-- 3. Totales --}}
@@ -196,7 +225,7 @@
             return {
                 isSubmitting: false,
                 isNewSupplier: false,
-                exchangeRate: {{ cache('usd_exchange_rate', 1) }},
+                exchangeRate: {{ $exchangeRate ? str_replace(',', '.', $exchangeRate) : 1 }},
                 productsList: @json($products),
                 rows: [],
 
@@ -204,14 +233,29 @@
                     this.addRow(); // Iniciar con una fila vacía
                 },
 
+
                 addRow() {
                     this.rows.push({
                         product_id: '',
+                        searchQuery: '',
+                        showDropdown: false,
                         bulk_id: '',
                         availableBulks: [],
                         quantity: 1,
                         unit_cost: 0,
                         unit_type: 'unit'
+                    });
+
+                    // Esperamos a que Alpine renderice la nueva fila en el DOM
+                    this.$nextTick(() => {
+                        let container = this.$refs.productsContainer;
+                        if (container) {
+                            // Hacemos un scroll suave hasta el fondo del contenedor
+                            container.scrollTo({
+                                top: container.scrollHeight,
+                                behavior: 'smooth'
+                            });
+                        }
                     });
                 },
 
@@ -219,6 +263,22 @@
                     if (this.rows.length > 1) {
                         this.rows.splice(index, 1);
                     }
+                },
+
+                filteredProducts(query) {
+                    if (!query) return this.productsList;
+                    let q = query.toLowerCase();
+                    return this.productsList.filter(p =>
+                        p.name.toLowerCase().includes(q) ||
+                        (p.sku_barcode && p.sku_barcode.toLowerCase().includes(q))
+                    );
+                },
+
+                selectProduct(index, prod) {
+                    this.rows[index].product_id = prod.id;
+                    this.rows[index].searchQuery = prod.name;
+                    this.rows[index].showDropdown = false;
+                    this.updateBulks(index);
                 },
 
                 // Esta función se ejecuta cuando el usuario selecciona un producto
