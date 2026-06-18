@@ -2,24 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountReceivable;
 use App\Models\Category;
 use App\Models\Client;
-use App\Models\ExchangeRate;
+use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\OrderDetail;
-use App\Models\Product;
-use App\Models\AccountReceivable;
-use App\Models\InventoryMovement;
 use App\Models\OrderPayment;
 use App\Models\PaymentMethod;
 use App\Models\PaymentProof;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ClientPanelController extends Controller
 {
@@ -31,13 +30,13 @@ class ClientPanelController extends Controller
         $user = Auth::user();
         $client = $user->client;
 
-        if (!$client) {
+        if (! $client) {
             $client = Client::create([
                 'uuid' => (string) Str::uuid(),
                 'user_id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'identification' => 'CI-' . rand(10000000, 30000000),
+                'identification' => 'CI-'.rand(10000000, 30000000),
                 'phone_number' => $user->phone_number ?? '',
                 'address' => '',
                 'is_active' => true,
@@ -52,21 +51,35 @@ class ClientPanelController extends Controller
      */
     public function storefront()
     {
+        // 1. Redirecciones prioritarias si el usuario ya está autenticado
+        if (Auth::check()) {
+            $user = Auth::user();
+
+            // Si es Admin, va a su dashboard
+            if ($user->hasRole('admin')) {
+                return redirect()->route('dashboard');
+            }
+
+            // Si es Client, va a su dashboard de cliente
+            if ($user->hasRole('client')) {
+                return redirect()->route('client.dashboard');
+            }
+        }
+
+        // 2. Si no está autenticado o no coincide con los roles de arriba, ve la tienda pública
         $products = Product::with(['category', 'inventory', 'images'])
             ->where('status', 'active')
             ->get();
 
         $categories = Category::where('is_active', true)->get();
 
-        // Cargar datos de cliente si está autenticado para permitir checkout directo
+        // Cargar datos de cliente (Por si acaso tu vista 'welcome' maneja alguna lógica condicional)
         $client = null;
-        if (Auth::check()) {
-            $user = Auth::user();
-            if ($user->role === 'client') {
-                $client = $this->getClient();
-            }
+        if (Auth::check() && Auth::user()->hasRole('client')) {
+            $client = $this->getClient();
         }
 
+        // Nota: Recuerda remover el dd() para que el flujo continúe normalmente
         return view('welcome', compact('products', 'categories', 'client'));
     }
 
@@ -81,7 +94,8 @@ class ClientPanelController extends Controller
         $ordersQuery = Order::where('client_id', $client->id);
         $totalOrders = (clone $ordersQuery)->count();
 
-        $pendingOrders = (clone $ordersQuery)->where('payment_status', '!=', 'paid')->count();
+        $pendingOrders = (clone $ordersQuery)->where('payment_status', '!=', 'paid')
+            ->where('status', '!=', 'cancelled')->count();
 
         // Suma de deudas pendientes desde cuentas por cobrar
         $totalDebt = AccountReceivable::where('client_id', $client->id)
@@ -134,7 +148,9 @@ class ClientPanelController extends Controller
         $client = $this->getClient();
         $exchangeRate = Cache::get('usd_exchange_rate'); // Usando la llave corregida
         $rateVal = $exchangeRate ? (float) str_replace(',', '.', $exchangeRate) : 1.0;
-        if ($rateVal <= 0) $rateVal = 1.0;
+        if ($rateVal <= 0) {
+            $rateVal = 1.0;
+        }
 
         $validated = $request->validate([
             'cart_items' => 'required|json',
@@ -163,16 +179,18 @@ class ClientPanelController extends Controller
                 $product = Product::with('inventory')->findOrFail($item['id']);
                 $qty = (float) $item['quantity'];
 
-                if ($qty <= 0) continue;
+                if ($qty <= 0) {
+                    continue;
+                }
 
                 $qtyInBaseUnit = $product->unit_type === 'gram' ? ($qty * 1000) : $qty;
 
-                if ($product->track_inventory && !$product->allow_negative_stock) {
+                if ($product->track_inventory && ! $product->allow_negative_stock) {
                     $available = $product->inventory ? (float) $product->inventory->stock : 0.0;
                     if ($qtyInBaseUnit > $available) {
                         $displayAvailable = $product->unit_type === 'gram' ? ($available / 1000) : $available;
                         $lbl = $product->unit_type === 'gram' ? 'Kgs' : 'Unds';
-                        throw new \Exception("El producto '{$product->name}' excede el inventario. Disponible: " . number_format($displayAvailable, $product->unit_type === 'gram' ? 3 : 0, ',', '.') . " {$lbl}");
+                        throw new \Exception("El producto '{$product->name}' excede el inventario. Disponible: ".number_format($displayAvailable, $product->unit_type === 'gram' ? 3 : 0, ',', '.')." {$lbl}");
                     }
                 }
 
@@ -195,7 +213,7 @@ class ClientPanelController extends Controller
 
             $lastOrder = Order::orderBy('id', 'desc')->first();
             $nextNum = $lastOrder ? $lastOrder->id + 1 : 1;
-            $orderNumber = 'ORD-' . str_pad($nextNum, 6, '0', STR_PAD_LEFT);
+            $orderNumber = 'ORD-'.str_pad($nextNum, 6, '0', STR_PAD_LEFT);
 
             // 1. Crear la Orden
             $order = Order::create([
@@ -206,7 +224,7 @@ class ClientPanelController extends Controller
                 'payment_status' => 'pending',
                 'verification_status' => 'pending',
                 'status' => 'pending',
-                'client_name' => $client->name . ' ' . ($client->last_name ?? ''),
+                'client_name' => $client->name.' '.($client->last_name ?? ''),
                 'client_phone' => $client->phone_number ?? '',
                 'delivery_address' => $validated['delivery_type'] === 'store_pickup' ? 'Retiro en Tienda' : $validated['delivery_address'],
                 'subtotal' => $subtotal,
@@ -237,7 +255,7 @@ class ClientPanelController extends Controller
                         'quantity' => $qtyToSubtract,
                         'previous_stock' => $previousStock,
                         'new_stock' => $previousStock - $qtyToSubtract,
-                        'notes' => 'Pedido web ' . $order->order_number,
+                        'notes' => 'Pedido web '.$order->order_number,
                         'created_by' => Auth::id(),
                     ]);
                 }
@@ -295,7 +313,8 @@ class ClientPanelController extends Controller
                 ->with('success', "Orden de compra {$orderNumber} registrada con éxito. Comprobante en revisión.");
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->withErrors(['error' => 'Error al procesar la compra: ' . $e->getMessage()]);
+
+            return back()->withInput()->withErrors(['error' => 'Error al procesar la compra: '.$e->getMessage()]);
         }
     }
 
@@ -331,7 +350,7 @@ class ClientPanelController extends Controller
             ->with(['order.payments.paymentMethod', 'installments'])
             ->orderBy('created_at', 'desc')
             ->paginate(3);
-            
+
         $paymentMethods = PaymentMethod::where('is_active', true)->where('show_in_checkout', true)->get();
 
         return view('client.invoices', compact('client', 'invoices', 'accounts', 'paymentMethods'));
@@ -358,7 +377,7 @@ class ClientPanelController extends Controller
             ->findOrFail($validated['account_receivable_id']);
 
         if ($validated['amount'] > $account->pending_amount) {
-            return back()->withInput()->withErrors(['error' => 'El monto del abono no puede superar el saldo pendiente (' . number_format($account->pending_amount, 2, ',', '.') . ' BS).']);
+            return back()->withInput()->withErrors(['error' => 'El monto del abono no puede superar el saldo pendiente ('.number_format($account->pending_amount, 2, ',', '.').' BS).']);
         }
 
         try {
@@ -376,7 +395,7 @@ class ClientPanelController extends Controller
                 'uploaded_by' => Auth::id(),
                 'reference' => $validated['reference'],
                 'status' => 'pending',
-                'notes' => 'Abono reportado desde panel cliente. ' . ($validated['notes'] ?? ''),
+                'notes' => 'Abono reportado desde panel cliente. '.($validated['notes'] ?? ''),
             ]);
 
             $proof->images()->create([
@@ -405,7 +424,8 @@ class ClientPanelController extends Controller
                 ->with('success', '¡Comprobante enviado exitosamente! Será verificado por administración en breve.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->withErrors(['error' => 'Error al reportar el abono: ' . $e->getMessage()]);
+
+            return back()->withInput()->withErrors(['error' => 'Error al reportar el abono: '.$e->getMessage()]);
         }
     }
 
@@ -444,7 +464,7 @@ class ClientPanelController extends Controller
             $user->name = $validated['name'];
             $user->email = $validated['email'];
 
-            if (!empty($validated['password'])) {
+            if (! empty($validated['password'])) {
                 $user->password = Hash::make($validated['password']);
             }
             $user->save();
@@ -464,7 +484,8 @@ class ClientPanelController extends Controller
                 ->with('success', 'Perfil actualizado correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->withErrors(['error' => 'Error al actualizar perfil: ' . $e->getMessage()]);
+
+            return back()->withInput()->withErrors(['error' => 'Error al actualizar perfil: '.$e->getMessage()]);
         }
     }
 }
