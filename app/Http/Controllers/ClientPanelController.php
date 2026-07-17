@@ -309,6 +309,8 @@ class ClientPanelController extends Controller
 
             DB::commit();
 
+            event(new \App\Events\SaleCreated($order));
+
             return redirect()->route('client.purchases')
                 ->with('success', "Orden de compra {$orderNumber} registrada con éxito. Comprobante en revisión.");
         } catch (\Exception $e) {
@@ -419,6 +421,8 @@ class ClientPanelController extends Controller
             ]);
 
             DB::commit();
+
+            event(new \App\Events\OrderStatusUpdated($order));
 
             return redirect()->route('client.invoices')
                 ->with('success', '¡Comprobante enviado exitosamente! Será verificado por administración en breve.');

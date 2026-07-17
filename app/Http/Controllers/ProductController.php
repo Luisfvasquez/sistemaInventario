@@ -20,13 +20,25 @@ use Intervention\Image\ImageManager;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        // Usamos eager loading ('category', 'inventory')
-        $products = Product::with(['category', 'inventory'])->paginate(10);
+        $search = $request->input('search');
+
+        // Sanitizar el input de búsqueda por seguridad (letras, números y caracteres simples)
+        $searchSanitized = $search ? preg_replace('/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\-\.\_\@]/u', '', $search) : null;
+
+        $products = Product::with(['category', 'inventory'])
+            ->when($searchSanitized, function ($query) use ($searchSanitized) {
+                $searchTerm = '%' . $searchSanitized . '%';
+                $query->where(function ($subQ) use ($searchTerm) {
+                    $subQ->where('name', 'like', $searchTerm)
+                         ->orWhere('sku', 'like', $searchTerm)
+                         ->orWhere('sku_barcode', 'like', $searchTerm);
+                });
+            })
+            ->paginate(10)
+            ->withQueryString();
+
         $categories = Category::all();
 
         return view('admin.products.index', compact('products', 'categories'));

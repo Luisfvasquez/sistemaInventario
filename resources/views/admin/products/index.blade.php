@@ -33,6 +33,26 @@
                 </ul>
             </div>
         @endif
+
+        {{-- Buscador tradicional (GET) --}}
+        <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center gap-4">
+            <form action="{{ route('admin.products.index') }}" method="GET" class="w-full flex flex-col sm:flex-row gap-3">
+                <input type="text" name="search" value="{{ request('search') }}"
+                    placeholder="Buscar por nombre de producto, SKU o código de barras..."
+                    class="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <button type="submit"
+                    class="inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors shadow-sm">
+                    Buscar
+                </button>
+                @if(request('search'))
+                    <a href="{{ route('admin.products.index') }}"
+                        class="inline-flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors shadow-sm">
+                        Limpiar
+                    </a>
+                @endif
+            </form>
+        </div>
+
         {{-- Tabla de Productos --}}
         <div class="bg-white rounded-xl shadow overflow-hidden">
             <div class="overflow-x-auto">

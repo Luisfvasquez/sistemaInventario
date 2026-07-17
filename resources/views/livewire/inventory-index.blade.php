@@ -23,7 +23,7 @@
         </div>
         <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
             <h2 class="text-gray-500 text-sm font-medium uppercase">Total Unidades en Almacén</h2>
-            <p class="text-2xl font-bold text-green-600">{{ number_format($totalStock, 0) }}</p>
+            <p class="text-2xl font-bold text-green-600">{{ number_format($totalStock, 2) }}</p>
         </div>
     </div>
 

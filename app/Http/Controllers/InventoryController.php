@@ -68,6 +68,8 @@ class InventoryController extends Controller
         // Actualizamos el stock
         $inventory->increment('stock', $quantity);
 
+        event(new \App\Events\InventoryUpdated($inventory));
+
         // TODO: Registrar en la tabla inventory_movements el motivo ($request->reason)
         // El paquete de auditoría que configuramos registrará quién hizo este cambio.
 

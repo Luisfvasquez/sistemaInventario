@@ -16,13 +16,7 @@ class PurchaseController extends Controller
 {
     public function index()
     {
-        // Cargamos la compra junto con su proveedor, el usuario que registró, y los detalles encadenados con sus productos y bultos
-        $purchases = Purchase::with(['supplier', 'user', 'details.product', 'details.bulk'])
-            ->orderBy('purchased_at', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
-        return view('admin.purchases.index', compact('purchases'));
+        return view('admin.purchases.index');
     }
 
     public function create()
@@ -129,6 +123,8 @@ class PurchaseController extends Controller
             ]);
 
             DB::commit();
+
+            event(new \App\Events\PurchaseCreated($purchase));
 
             return redirect()->route('admin.purchases.index')
                 ->with('success', 'Compra procesada. El inventario ha sido actualizado correctamente.');

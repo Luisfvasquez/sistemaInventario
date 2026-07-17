@@ -1,8 +1,10 @@
 import './bootstrap';
-
-import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 
-Alpine.plugin(collapse);
-window.Alpine = Alpine;
-Alpine.start();
+// Livewire gestiona Alpine automáticamente en todas las páginas (inject_assets = true).
+// Solo registramos el plugin de collapse antes de que Alpine arranque.
+document.addEventListener('alpine:init', () => {
+    window.Alpine.plugin(collapse);
+});
+
+

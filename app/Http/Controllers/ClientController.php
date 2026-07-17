@@ -68,7 +68,7 @@ class ClientController extends Controller
             }
 
             // 4. Crear el perfil del cliente
-            Client::create([
+            $client = Client::create([
                 'uuid' => \Illuminate\Support\Str::uuid(),
                 'user_id' => $userId, // Queda en null si no se creó cuenta web
                 'name' => $validated['name'],
@@ -80,6 +80,8 @@ class ClientController extends Controller
             ]);
 
             DB::commit();
+
+            event(new \App\Events\ClientCreated($client));
 
             return redirect()->route('admin.clients.index')
                 ->with('success', 'Cliente registrado correctamente'.($userId ? ' junto con su cuenta de acceso web.' : '.'));
@@ -143,6 +145,8 @@ class ClientController extends Controller
             'email' => $validated['email'] ?? $client->email,
             'is_active' => $request->boolean('is_active', $client->is_active),
         ]);
+
+        event(new \App\Events\ClientUpdated($client));
 
         return redirect()->route('admin.clients.index')
             ->with('success', 'Cliente actualizado correctamente.');
@@ -250,6 +254,8 @@ class ClientController extends Controller
             $order->save();
 
             DB::commit();
+
+            event(new \App\Events\OrderStatusUpdated($order));
 
             return redirect()->route('admin.clients.show', $client->id)
                 ->with('success', 'Abono registrado correctamente de ' . number_format($validated['amount'], 2, ',', '.') . '.');

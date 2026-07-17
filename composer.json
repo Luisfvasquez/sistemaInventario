@@ -13,6 +13,7 @@
         "intervention/image": "^4.1",
         "laravel-lang/common": "^6.8",
         "laravel/framework": "^13.7",
+        "laravel/reverb": "^1.0",
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^4.3",
         "owen-it/laravel-auditing": "^14.0",

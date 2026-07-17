@@ -19,9 +19,7 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::with(['client', 'details.product', 'details.bulk'])->orderBy('created_at', 'desc')->paginate(10);
-
-        return view('admin.orders.index', compact('orders'));
+        return view('admin.orders.index');
     }
 
     public function create()
@@ -173,6 +171,8 @@ class OrderController extends Controller
 
             DB::commit();
 
+            event(new \App\Events\OrderStatusUpdated($order));
+
             return redirect()->route('admin.orders.show', $order->id)
                 ->with('success', 'El pago ha sido verificado y el estado de la orden actualizado correctamente.');
         } catch (\Exception $e) {
@@ -250,6 +250,8 @@ class OrderController extends Controller
             }
 
             DB::commit();
+
+            event(new \App\Events\SaleRejected($order));
 
             return redirect()->route('admin.orders.show', $order->id)
                 ->with('success', 'Orden rechazada, deuda anulada y stock reintegrado correctamente.');
@@ -439,6 +441,8 @@ class OrderController extends Controller
 
             DB::commit();
 
+            event(new \App\Events\SaleCreated($order));
+
             return response()->json([
                 'success' => true,
                 'message' => '¡Venta Procesada! Orden: '.$orderNumber,
@@ -470,6 +474,8 @@ class OrderController extends Controller
             ]);
 
             DB::commit();
+
+            event(new \App\Events\OrderStatusUpdated($order));
 
             return redirect()->route('admin.orders.show', $order->id)
                 ->with('success', 'La orden ha sido marcada como entregada al cliente exitosamente.');
